@@ -1,0 +1,143 @@
+import { useState } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { Wallet } from "lucide-react";
+
+export default function Auth() {
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const [mode, setMode] = useState<"login" | "signup" | "forgot">(
+    (params.get("mode") as any) || "login"
+  );
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email, password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: { display_name: name || email.split("@")[0] },
+          },
+        });
+        if (error) throw error;
+        toast.success("Check your email to confirm your account");
+      } else if (mode === "login") {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        navigate("/");
+      } else {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        toast.success("Password reset email sent");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const google = async () => {
+    const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+    if (r.error) toast.error("Google sign-in failed");
+    else if (!r.redirected) navigate("/");
+  };
+
+  return (
+    <div className="min-h-screen grid lg:grid-cols-2">
+      <div className="hidden lg:flex flex-col justify-between bg-gradient-primary p-12 text-primary-foreground">
+        <div className="flex items-center gap-2 text-xl font-semibold">
+          <Wallet className="h-6 w-6" /> FinTask
+        </div>
+        <div>
+          <h1 className="text-4xl font-bold leading-tight">Master your money. Conquer your day.</h1>
+          <p className="mt-4 text-primary-foreground/80 max-w-md">
+            Track every shilling, plan every task, and watch your savings grow — all in one beautifully simple workspace.
+          </p>
+        </div>
+        <div className="text-sm text-primary-foreground/70">© FinTask</div>
+      </div>
+
+      <div className="flex items-center justify-center p-6">
+        <div className="w-full max-w-md space-y-6">
+          <div className="lg:hidden flex items-center gap-2 text-xl font-semibold text-primary">
+            <Wallet className="h-6 w-6" /> FinTask
+          </div>
+          <div>
+            <h2 className="text-2xl font-semibold">
+              {mode === "login" && "Welcome back"}
+              {mode === "signup" && "Create your account"}
+              {mode === "forgot" && "Reset your password"}
+            </h2>
+            <p className="text-muted-foreground text-sm mt-1">
+              {mode === "login" && "Sign in to continue to FinTask"}
+              {mode === "signup" && "Start tracking your finances in seconds"}
+              {mode === "forgot" && "We'll email you a reset link"}
+            </p>
+          </div>
+
+          <form onSubmit={submit} className="space-y-4">
+            {mode === "signup" && (
+              <div>
+                <Label htmlFor="name">Name</Label>
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" />
+              </div>
+            )}
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+            </div>
+            {mode !== "forgot" && (
+              <div>
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+            )}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Please wait…" : mode === "login" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"}
+            </Button>
+          </form>
+
+          {mode !== "forgot" && (
+            <>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">or</span>
+                </div>
+              </div>
+              <Button type="button" variant="outline" className="w-full" onClick={google}>
+                Continue with Google
+              </Button>
+            </>
+          )}
+
+          <div className="text-sm text-center text-muted-foreground space-y-1">
+            {mode === "login" && (
+              <>
+                <p><button className="text-primary hover:underline" onClick={() => setMode("forgot")}>Forgot password?</button></p>
+                <p>Don't have an account? <button className="text-primary hover:underline" onClick={() => setMode("signup")}>Sign up</button></p>
+              </>
+            )}
+            {mode === "signup" && <p>Already have an account? <button className="text-primary hover:underline" onClick={() => setMode("login")}>Sign in</button></p>}
+            {mode === "forgot" && <p><button className="text-primary hover:underline" onClick={() => setMode("login")}>Back to sign in</button></p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
