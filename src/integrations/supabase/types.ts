@@ -362,6 +362,7 @@ export type Database = {
           icon: string | null
           id: string
           name: string
+          repository_type: string | null
           target_amount: number
           user_id: string
           wallet_id: string | null
@@ -373,6 +374,7 @@ export type Database = {
           icon?: string | null
           id?: string
           name: string
+          repository_type?: string | null
           target_amount: number
           user_id: string
           wallet_id?: string | null
@@ -384,6 +386,7 @@ export type Database = {
           icon?: string | null
           id?: string
           name?: string
+          repository_type?: string | null
           target_amount?: number
           user_id?: string
           wallet_id?: string | null
