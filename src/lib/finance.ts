@@ -10,7 +10,7 @@ export const fmtDate = (d: string | Date | null | undefined) => {
   return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 };
 
-export type TxMethod = "direct" | "mpesa_withdraw" | "mpesa_send" | "mpesa_paybill" | "mpesa_buygoods" | "custom";
+export type TxMethod = "direct" | "mpesa_withdraw" | "mpesa_send" | "mpesa_paybill" | "mpesa_buygoods" | "bank_to_mpesa" | "bank_transfer" | "custom";
 
 export const METHOD_LABELS: Record<string, string> = {
   direct: "Direct / Cash",
@@ -18,6 +18,8 @@ export const METHOD_LABELS: Record<string, string> = {
   mpesa_send: "M-Pesa Send Money",
   mpesa_paybill: "M-Pesa Pay Bill",
   mpesa_buygoods: "M-Pesa Buy Goods",
+  bank_to_mpesa: "Bank → M-Pesa",
+  bank_transfer: "Bank Transfer",
   custom: "Custom",
 };
 
@@ -26,6 +28,14 @@ export const METHOD_TO_TIER: Record<string, string> = {
   mpesa_send: "send",
   mpesa_paybill: "paybill",
   mpesa_buygoods: "buygoods",
+  bank_to_mpesa: "bank_to_mpesa",
+  bank_transfer: "bank_transfer",
+};
+
+export const TASK_STATUS_STYLES: Record<string, { bg: string; text: string; border: string; dot: string; label: string }> = {
+  todo:        { bg: "bg-warning-soft",  text: "text-warning",  border: "border-warning/30",  dot: "bg-warning",  label: "To Do" },
+  in_progress: { bg: "bg-primary-soft",  text: "text-primary",  border: "border-primary/30",  dot: "bg-primary",  label: "In Progress" },
+  done:        { bg: "bg-success-soft",  text: "text-success",  border: "border-success/30",  dot: "bg-success",  label: "Done" },
 };
 
 export type Tier = { min_amount: number; max_amount: number; fee: number; tx_type: string };
