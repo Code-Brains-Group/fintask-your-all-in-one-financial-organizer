@@ -12,7 +12,10 @@ import ResetPassword from "./pages/ResetPassword";
 import Transactions from "./pages/Transactions";
 import Tasks from "./pages/Tasks";
 import Settings from "./pages/Settings";
-import ComingSoon from "./pages/ComingSoon";
+import Budgets from "./pages/Budgets";
+import Savings from "./pages/Savings";
+import Recurring from "./pages/Recurring";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,12 +33,13 @@ const App = () => (
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/" element={<Index />} />
               <Route path="/finance/transactions" element={<Transactions />} />
-              <Route path="/finance/budgets" element={<ComingSoon title="Budgets" emoji="📊" />} />
-              <Route path="/finance/savings" element={<ComingSoon title="Savings Goals" emoji="🎯" />} />
-              <Route path="/finance/transfers" element={<ComingSoon title="Transfers" emoji="🔄" />} />
-              <Route path="/finance/reports" element={<ComingSoon title="Reports" emoji="📈" />} />
+              <Route path="/finance/budgets" element={<Budgets />} />
+              <Route path="/finance/savings" element={<Savings />} />
+              <Route path="/finance/recurring" element={<Recurring />} />
+              <Route path="/finance/reports" element={<Reports />} />
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/tasks/board" element={<Tasks />} />
+              <Route path="/tasks/dashboard" element={<Tasks />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
