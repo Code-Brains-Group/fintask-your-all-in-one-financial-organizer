@@ -1,0 +1,1 @@
+ALTER TABLE public.savings_goals ADD COLUMN IF NOT EXISTS repository_type text DEFAULT 'bank';

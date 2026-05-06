@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Wallet, ListChecks, Settings, PieChart, Target,
-  ArrowLeftRight, FileBarChart, KanbanSquare, ListTodo, LogOut, Receipt, ChevronDown
+  Repeat, FileBarChart, KanbanSquare, ListTodo, LogOut, Receipt, ChevronDown, BarChart3
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -9,14 +9,15 @@ import { useEffect, useState } from "react";
 
 const finance = [
   { to: "/finance/transactions", label: "Transactions", icon: Receipt },
-  { to: "/finance/budgets", label: "Budgets", icon: PieChart },
-  { to: "/finance/savings", label: "Savings Goals", icon: Target },
-  { to: "/finance/transfers", label: "Transfers", icon: ArrowLeftRight },
+  { to: "/finance/budgets", label: "Budgets & Plans", icon: PieChart },
+  { to: "/finance/savings", label: "Savings", icon: Target },
+  { to: "/finance/recurring", label: "Recurring", icon: Repeat },
   { to: "/finance/reports", label: "Reports", icon: FileBarChart },
 ];
 const tasks = [
   { to: "/tasks", label: "Task List", icon: ListTodo },
   { to: "/tasks/board", label: "Kanban Board", icon: KanbanSquare },
+  { to: "/tasks/dashboard", label: "Task Dashboard", icon: BarChart3 },
 ];
 
 function SideLink({ to, label, icon: Icon }: any) {
