@@ -104,31 +104,68 @@ export default function Settings() {
 
 function WalletsManager({ wallets, onChange }: any) {
   const { user } = useAuth();
+  const [editing, setEditing] = useState<Record<string, any>>({});
   const [name, setName] = useState(""); const [type, setType] = useState("other"); const [opening, setOpening] = useState("0");
+
   const add = async () => {
     if (!name) return;
     await supabase.from("wallets").insert({ user_id: user!.id, name, type, opening_balance: Number(opening) });
     setName(""); setOpening("0"); onChange();
   };
-  const remove = async (id: string) => { await supabase.from("wallets").delete().eq("id", id); onChange(); };
+  const save = async (w: any) => {
+    const e = editing[w.id]; if (!e) return;
+    await supabase.from("wallets").update({ name: e.name, type: e.type, opening_balance: Number(e.opening_balance) }).eq("id", w.id);
+    const ne = { ...editing }; delete ne[w.id]; setEditing(ne);
+    toast.success("Wallet updated"); onChange();
+  };
+  const remove = async (id: string) => {
+    if (!confirm("Delete this wallet? Transactions linked to it remain.")) return;
+    await supabase.from("wallets").delete().eq("id", id); onChange();
+  };
   return (
     <Card><CardHeader><CardTitle className="text-base">Wallets</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         <div className="space-y-2">
-          {wallets.map((w: any) => (
-            <div key={w.id} className="flex items-center justify-between border rounded-lg p-3">
-              <div><div className="font-medium text-sm">{w.name}</div><div className="text-xs text-muted-foreground capitalize">{w.type} · opening {fmtKES(w.opening_balance)}</div></div>
-              <Button size="icon" variant="ghost" onClick={() => remove(w.id)}><Trash2 className="h-4 w-4" /></Button>
-            </div>
-          ))}
+          {wallets.map((w: any) => {
+            const e = editing[w.id];
+            return (
+              <div key={w.id} className="border rounded-lg p-3">
+                {e ? (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <Input value={e.name} onChange={(ev) => setEditing({ ...editing, [w.id]: { ...e, name: ev.target.value } })} className="flex-1 min-w-32" />
+                    <Select value={e.type} onValueChange={(v) => setEditing({ ...editing, [w.id]: { ...e, type: v } })}>
+                      <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mpesa">M-Pesa</SelectItem><SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="bank">Bank</SelectItem><SelectItem value="mmf">MMF</SelectItem>
+                        <SelectItem value="chama">Chama</SelectItem><SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input type="number" className="w-28" value={e.opening_balance} onChange={(ev) => setEditing({ ...editing, [w.id]: { ...e, opening_balance: ev.target.value } })} />
+                    <Button size="sm" onClick={() => save(w)}>Save</Button>
+                    <Button size="sm" variant="ghost" onClick={() => { const ne = { ...editing }; delete ne[w.id]; setEditing(ne); }}>Cancel</Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div><div className="font-medium text-sm">{w.name}</div><div className="text-xs text-muted-foreground capitalize">{w.type} · opening {fmtKES(w.opening_balance)}</div></div>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline" onClick={() => setEditing({ ...editing, [w.id]: { ...w } })}>Edit</Button>
+                      <Button size="icon" variant="ghost" onClick={() => remove(w.id)}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-        <div className="flex gap-2 pt-3 border-t">
-          <Input placeholder="Wallet name" value={name} onChange={(e) => setName(e.target.value)} />
+        <div className="flex flex-wrap gap-2 pt-3 border-t">
+          <Input placeholder="Wallet name" value={name} onChange={(e) => setName(e.target.value)} className="flex-1 min-w-32" />
           <Select value={type} onValueChange={setType}>
             <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="mpesa">M-Pesa</SelectItem><SelectItem value="cash">Cash</SelectItem>
-              <SelectItem value="bank">Bank</SelectItem><SelectItem value="other">Other</SelectItem>
+              <SelectItem value="bank">Bank</SelectItem><SelectItem value="mmf">MMF</SelectItem>
+              <SelectItem value="chama">Chama</SelectItem><SelectItem value="other">Other</SelectItem>
             </SelectContent>
           </Select>
           <Input type="number" placeholder="0" className="w-28" value={opening} onChange={(e) => setOpening(e.target.value)} />
