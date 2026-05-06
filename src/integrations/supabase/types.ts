@@ -14,26 +14,65 @@ export type Database = {
   }
   public: {
     Tables: {
+      budget_items: {
+        Row: {
+          budget_id: string
+          created_at: string
+          id: string
+          name: string
+          planned_amount: number
+          purchased: boolean
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          budget_id: string
+          created_at?: string
+          id?: string
+          name: string
+          planned_amount?: number
+          purchased?: boolean
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          budget_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          planned_amount?: number
+          purchased?: boolean
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       budgets: {
         Row: {
           category_id: string | null
           created_at: string
           id: string
+          month: string | null
           monthly_limit: number
+          name: string | null
           user_id: string
         }
         Insert: {
           category_id?: string | null
           created_at?: string
           id?: string
+          month?: string | null
           monthly_limit: number
+          name?: string | null
           user_id: string
         }
         Update: {
           category_id?: string | null
           created_at?: string
           id?: string
+          month?: string | null
           monthly_limit?: number
+          name?: string | null
           user_id?: string
         }
         Relationships: [
@@ -140,6 +179,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pending_recurring: {
+        Row: {
+          created_at: string
+          due_date: string
+          id: string
+          rule_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          due_date: string
+          id?: string
+          rule_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          due_date?: string
+          id?: string
+          rule_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -376,6 +442,7 @@ export type Database = {
           id: string
           labels: string[]
           linked_transaction_id: string | null
+          planned_cost: number | null
           priority: string
           status: string
           title: string
@@ -390,6 +457,7 @@ export type Database = {
           id?: string
           labels?: string[]
           linked_transaction_id?: string | null
+          planned_cost?: number | null
           priority?: string
           status?: string
           title: string
@@ -404,6 +472,7 @@ export type Database = {
           id?: string
           labels?: string[]
           linked_transaction_id?: string | null
+          planned_cost?: number | null
           priority?: string
           status?: string
           title?: string
@@ -432,6 +501,7 @@ export type Database = {
           method: string | null
           note: string | null
           recurring_rule_id: string | null
+          task_id: string | null
           to_wallet_id: string | null
           transfer_group: string | null
           type: string
@@ -449,6 +519,7 @@ export type Database = {
           method?: string | null
           note?: string | null
           recurring_rule_id?: string | null
+          task_id?: string | null
           to_wallet_id?: string | null
           transfer_group?: string | null
           type: string
@@ -466,6 +537,7 @@ export type Database = {
           method?: string | null
           note?: string | null
           recurring_rule_id?: string | null
+          task_id?: string | null
           to_wallet_id?: string | null
           transfer_group?: string | null
           type?: string
