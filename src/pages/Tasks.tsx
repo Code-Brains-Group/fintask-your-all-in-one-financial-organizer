@@ -98,7 +98,7 @@ export default function Tasks() {
                   const s = TASK_STATUS_STYLES[t.status];
                   const cost = taskCost(t.id);
                   return (
-                    <Card key={t.id} className={`border-l-4 ${s.border.replace("border-", "border-l-")} ${t.status === "done" ? "opacity-60" : ""}`}>
+                    <Card key={t.id} className={`border-l-4 ${t.status === "done" ? "border-l-success opacity-60" : t.status === "in_progress" ? "border-l-primary" : "border-l-warning"}`}>
                       <CardContent className="p-3 flex items-center gap-3">
                         <Checkbox checked={t.status === "done"} onCheckedChange={() => toggle(t)} />
                         <div className="flex-1 min-w-0">
