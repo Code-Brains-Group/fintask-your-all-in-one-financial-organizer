@@ -48,23 +48,24 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   const finish = async () => {
     setSaving(true);
     try {
-      await supabase.from("profiles").upsert({ id: user!.id, display_name: name, currency, onboarded: true });
-      const validWallets = wallets.filter(w => w.name.trim());
-      if (validWallets.length) {
-        await supabase.from("wallets").insert(validWallets.map(w => ({ ...w, user_id: user!.id })));
+      await supabase.from("profiles").upsert({ id: user!.id, display_name: name, currency, onboarded: true, feature_focus: focus });
+      if (needsFinance) {
+        const validWallets = wallets.filter(w => w.name.trim());
+        if (validWallets.length) {
+          await supabase.from("wallets").insert(validWallets.map(w => ({ ...w, user_id: user!.id })));
+        }
+        await supabase.from("categories").insert(DEFAULT_CATEGORIES.map(c => ({ ...c, user_id: user!.id })));
+        const { data: prov } = await supabase.from("cost_providers").insert({ user_id: user!.id, name: "M-Pesa", icon: "📱" }).select().single();
+        if (prov) {
+          const tiers = Object.entries(MPESA_TIERS).flatMap(([tx_type, rows]) =>
+            rows.map(([min_amount, max_amount, fee]) => ({
+              user_id: user!.id, provider_id: prov.id, tx_type, min_amount, max_amount, fee,
+            }))
+          );
+          await supabase.from("cost_tiers").insert(tiers);
+        }
       }
-      // seed categories
-      await supabase.from("categories").insert(DEFAULT_CATEGORIES.map(c => ({ ...c, user_id: user!.id })));
-      // seed M-Pesa provider + tiers
-      const { data: prov } = await supabase.from("cost_providers").insert({ user_id: user!.id, name: "M-Pesa", icon: "📱" }).select().single();
-      if (prov) {
-        const tiers = Object.entries(MPESA_TIERS).flatMap(([tx_type, rows]) =>
-          rows.map(([min_amount, max_amount, fee]) => ({
-            user_id: user!.id, provider_id: prov.id, tx_type, min_amount, max_amount, fee,
-          }))
-        );
-        await supabase.from("cost_tiers").insert(tiers);
-      }
+      await refreshFocus();
       toast.success("Welcome to FinTask! 🎉");
       onDone();
     } catch (e: any) {
