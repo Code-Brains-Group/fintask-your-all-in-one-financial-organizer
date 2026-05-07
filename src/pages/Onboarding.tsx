@@ -29,14 +29,16 @@ const MPESA_TIERS = {
 };
 
 export default function Onboarding({ onDone }: { onDone: () => void }) {
-  const { user } = useAuth();
+  const { user, refreshFocus } = useAuth();
   const [step, setStep] = useState(1);
+  const [focus, setFocus] = useState<"tasks" | "finance" | "both">("both");
   const [name, setName] = useState("");
   const [currency, setCurrency] = useState("KES");
   const [wallets, setWallets] = useState<{ name: string; type: string; opening_balance: number }[]>([
     { name: "M-Pesa", type: "mpesa", opening_balance: 0 },
   ]);
   const [saving, setSaving] = useState(false);
+  const needsFinance = focus !== "tasks";
 
   useEffect(() => {
     supabase.from("profiles").select("display_name,currency").eq("id", user!.id).maybeSingle()
