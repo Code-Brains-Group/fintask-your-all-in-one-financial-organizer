@@ -25,29 +25,54 @@ export default function Dashboard() {
   const [wallets, setWallets] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
+  const [allTasks, setAllTasks] = useState<any[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
   const [contributions, setContributions] = useState<any[]>([]);
+  const [pending, setPending] = useState<any[]>([]);
+  const [rules, setRules] = useState<any[]>([]);
 
-  useEffect(() => {
+  const loadAll = async () => {
     if (!user) return;
-    (async () => {
-      const [tx, w, c, t, g, sc] = await Promise.all([
-        supabase.from("transactions").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(500),
-        supabase.from("wallets").select("*").eq("user_id", user.id),
-        supabase.from("categories").select("*").eq("user_id", user.id),
-        supabase.from("tasks").select("*").eq("user_id", user.id).neq("status", "done").order("due_date", { ascending: true, nullsFirst: false }).limit(3),
-        supabase.from("savings_goals").select("*").eq("user_id", user.id).eq("completed", false),
-        supabase.from("savings_contributions").select("*").eq("user_id", user.id),
-      ]);
-      setTransactions(tx.data || []);
-      setWallets(w.data || []);
-      setCategories(c.data || []);
-      setTasks(t.data || []);
-      setGoals(g.data || []);
-      setContributions(sc.data || []);
-      setLoading(false);
-    })();
-  }, [user]);
+    const [tx, w, c, t, ta, g, sc, p, r] = await Promise.all([
+      supabase.from("transactions").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(500),
+      supabase.from("wallets").select("*").eq("user_id", user.id),
+      supabase.from("categories").select("*").eq("user_id", user.id),
+      supabase.from("tasks").select("*").eq("user_id", user.id).neq("status", "done").order("due_date", { ascending: true, nullsFirst: false }).limit(3),
+      supabase.from("tasks").select("*").eq("user_id", user.id),
+      supabase.from("savings_goals").select("*").eq("user_id", user.id).eq("completed", false),
+      supabase.from("savings_contributions").select("*").eq("user_id", user.id),
+      supabase.from("pending_recurring").select("*").eq("user_id", user.id).eq("status", "pending"),
+      supabase.from("recurring_rules").select("*").eq("user_id", user.id),
+    ]);
+    setTransactions(tx.data || []);
+    setWallets(w.data || []);
+    setCategories(c.data || []);
+    setTasks(t.data || []);
+    setAllTasks(ta.data || []);
+    setGoals(g.data || []);
+    setContributions(sc.data || []);
+    setPending(p.data || []);
+    setRules(r.data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadAll(); }, [user]);
+
+  const ruleFor = (id: string) => rules.find(r => r.id === id);
+  const approve = async (p: any) => {
+    const r = ruleFor(p.rule_id); if (!r) return;
+    await supabase.from("transactions").insert({
+      user_id: user!.id, description: r.description, amount: Number(r.amount), type: r.type,
+      category_id: r.category_id, wallet_id: r.wallet_id, date: p.due_date,
+      method: r.method || "direct", recurring_rule_id: r.id,
+    });
+    await supabase.from("pending_recurring").update({ status: "approved" }).eq("id", p.id);
+    toast.success("Approved & added"); loadAll();
+  };
+  const skip = async (p: any) => {
+    await supabase.from("pending_recurring").update({ status: "skipped" }).eq("id", p.id);
+    loadAll();
+  };
 
   if (loading) {
     return (
