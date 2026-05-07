@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Wallet, Trash2, Plus, Check } from "lucide-react";
+import { Wallet, Trash2, Plus, Check, ListChecks, Briefcase } from "lucide-react";
 
 const DEFAULT_CATEGORIES = [
   { name: "Food", icon: "🍔", type: "expense" },
