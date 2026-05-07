@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS feature_focus text NOT NULL DEFAULT 'both' CHECK (feature_focus IN ('tasks','finance','both'));

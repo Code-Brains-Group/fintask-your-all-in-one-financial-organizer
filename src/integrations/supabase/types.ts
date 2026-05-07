@@ -213,6 +213,7 @@ export type Database = {
           created_at: string
           currency: string
           display_name: string | null
+          feature_focus: string
           id: string
           onboarded: boolean
           theme: string
@@ -223,6 +224,7 @@ export type Database = {
           created_at?: string
           currency?: string
           display_name?: string | null
+          feature_focus?: string
           id: string
           onboarded?: boolean
           theme?: string
@@ -233,6 +235,7 @@ export type Database = {
           created_at?: string
           currency?: string
           display_name?: string | null
+          feature_focus?: string
           id?: string
           onboarded?: boolean
           theme?: string
