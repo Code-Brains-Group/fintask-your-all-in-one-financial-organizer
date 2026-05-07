@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 export default function Settings() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, refreshFocus } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [wallets, setWallets] = useState<any[]>([]);
@@ -36,7 +36,10 @@ export default function Settings() {
   useEffect(() => { load(); }, [user]);
 
   const saveProfile = async () => {
-    await supabase.from("profiles").update({ display_name: profile.display_name, currency: profile.currency }).eq("id", user!.id);
+    await supabase.from("profiles").update({
+      display_name: profile.display_name, currency: profile.currency, feature_focus: profile.feature_focus,
+    }).eq("id", user!.id);
+    await refreshFocus();
     toast.success("Profile updated");
   };
 
@@ -69,6 +72,16 @@ export default function Settings() {
                       <SelectItem value="USD">USD</SelectItem>
                       <SelectItem value="EUR">EUR</SelectItem>
                       <SelectItem value="GBP">GBP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Workspace focus</Label>
+                  <Select value={profile.feature_focus || "both"} onValueChange={(v) => setProfile({ ...profile, feature_focus: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="both">✨ Both — Finance + Tasks</SelectItem>
+                      <SelectItem value="finance">💰 Finance only</SelectItem>
+                      <SelectItem value="tasks">✅ Tasks only</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

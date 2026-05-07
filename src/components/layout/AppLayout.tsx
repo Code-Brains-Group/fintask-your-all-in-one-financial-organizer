@@ -55,9 +55,11 @@ function Group({ title, icon: Icon, items, defaultOpen }: any) {
 }
 
 export default function AppLayout() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, focus } = useAuth();
   const navigate = useNavigate();
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
+  const showFinance = focus !== "tasks";
+  const showTasks = focus !== "finance";
 
   return (
     <div className="min-h-screen w-full flex bg-background">
@@ -69,8 +71,8 @@ export default function AppLayout() {
         </div>
         <nav className="space-y-1 flex-1 overflow-y-auto">
           <SideLink to="/" label="Dashboard" icon={LayoutDashboard} />
-          <Group title="Finance" icon={Wallet} items={finance} defaultOpen />
-          <Group title="Tasks" icon={ListChecks} items={tasks} />
+          {showFinance && <Group title="Finance" icon={Wallet} items={finance} defaultOpen />}
+          {showTasks && <Group title="Tasks" icon={ListChecks} items={tasks} defaultOpen={!showFinance} />}
           <SideLink to="/settings" label="Settings" icon={Settings} />
         </nav>
         <div className="border-t pt-3 mt-3 space-y-2">
@@ -90,11 +92,11 @@ export default function AppLayout() {
       {/* Mobile bottom nav */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-card border-t flex justify-around py-2 shadow-lg">
         {[
-          { to: "/", icon: LayoutDashboard, label: "Home" },
-          { to: "/finance/transactions", icon: Receipt, label: "Money" },
-          { to: "/tasks", icon: ListTodo, label: "Tasks" },
-          { to: "/settings", icon: Settings, label: "Settings" },
-        ].map((i) => (
+          { to: "/", icon: LayoutDashboard, label: "Home", show: true },
+          { to: "/finance/transactions", icon: Receipt, label: "Money", show: showFinance },
+          { to: "/tasks", icon: ListTodo, label: "Tasks", show: showTasks },
+          { to: "/settings", icon: Settings, label: "Settings", show: true },
+        ].filter(i => i.show).map((i) => (
           <NavLink key={i.to} to={i.to} end className={({ isActive }) =>
             `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-xs ${isActive ? "text-primary" : "text-muted-foreground"}`
           }>

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Wallet, Trash2, Plus, Check } from "lucide-react";
+import { Wallet, Trash2, Plus, Check, ListChecks, Briefcase } from "lucide-react";
 
 const DEFAULT_CATEGORIES = [
   { name: "Food", icon: "🍔", type: "expense" },
@@ -29,14 +29,16 @@ const MPESA_TIERS = {
 };
 
 export default function Onboarding({ onDone }: { onDone: () => void }) {
-  const { user } = useAuth();
+  const { user, refreshFocus } = useAuth();
   const [step, setStep] = useState(1);
+  const [focus, setFocus] = useState<"tasks" | "finance" | "both">("both");
   const [name, setName] = useState("");
   const [currency, setCurrency] = useState("KES");
   const [wallets, setWallets] = useState<{ name: string; type: string; opening_balance: number }[]>([
     { name: "M-Pesa", type: "mpesa", opening_balance: 0 },
   ]);
   const [saving, setSaving] = useState(false);
+  const needsFinance = focus !== "tasks";
 
   useEffect(() => {
     supabase.from("profiles").select("display_name,currency").eq("id", user!.id).maybeSingle()
@@ -46,23 +48,24 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   const finish = async () => {
     setSaving(true);
     try {
-      await supabase.from("profiles").upsert({ id: user!.id, display_name: name, currency, onboarded: true });
-      const validWallets = wallets.filter(w => w.name.trim());
-      if (validWallets.length) {
-        await supabase.from("wallets").insert(validWallets.map(w => ({ ...w, user_id: user!.id })));
+      await supabase.from("profiles").upsert({ id: user!.id, display_name: name, currency, onboarded: true, feature_focus: focus });
+      if (needsFinance) {
+        const validWallets = wallets.filter(w => w.name.trim());
+        if (validWallets.length) {
+          await supabase.from("wallets").insert(validWallets.map(w => ({ ...w, user_id: user!.id })));
+        }
+        await supabase.from("categories").insert(DEFAULT_CATEGORIES.map(c => ({ ...c, user_id: user!.id })));
+        const { data: prov } = await supabase.from("cost_providers").insert({ user_id: user!.id, name: "M-Pesa", icon: "📱" }).select().single();
+        if (prov) {
+          const tiers = Object.entries(MPESA_TIERS).flatMap(([tx_type, rows]) =>
+            rows.map(([min_amount, max_amount, fee]) => ({
+              user_id: user!.id, provider_id: prov.id, tx_type, min_amount, max_amount, fee,
+            }))
+          );
+          await supabase.from("cost_tiers").insert(tiers);
+        }
       }
-      // seed categories
-      await supabase.from("categories").insert(DEFAULT_CATEGORIES.map(c => ({ ...c, user_id: user!.id })));
-      // seed M-Pesa provider + tiers
-      const { data: prov } = await supabase.from("cost_providers").insert({ user_id: user!.id, name: "M-Pesa", icon: "📱" }).select().single();
-      if (prov) {
-        const tiers = Object.entries(MPESA_TIERS).flatMap(([tx_type, rows]) =>
-          rows.map(([min_amount, max_amount, fee]) => ({
-            user_id: user!.id, provider_id: prov.id, tx_type, min_amount, max_amount, fee,
-          }))
-        );
-        await supabase.from("cost_tiers").insert(tiers);
-      }
+      await refreshFocus();
       toast.success("Welcome to FinTask! 🎉");
       onDone();
     } catch (e: any) {
@@ -70,40 +73,82 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
     } finally { setSaving(false); }
   };
 
+  const totalSteps = needsFinance ? 4 : 3;
+  const next = () => {
+    if (step === 2 && !needsFinance) setStep(4);
+    else setStep(step + 1);
+  };
+  const back = () => {
+    if (step === 4 && !needsFinance) setStep(2);
+    else setStep(step - 1);
+  };
+  const stepDisplay = !needsFinance && step === 4 ? 3 : step;
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-primary-soft to-background">
       <div className="w-full max-w-lg ft-card p-8 space-y-6 animate-fade-in">
         <div className="flex items-center gap-2 mb-2">
-          {[1,2,3].map(s => (
-            <div key={s} className={`h-2 flex-1 rounded-full ${s <= step ? "bg-primary" : "bg-muted"}`} />
+          {Array.from({ length: totalSteps }).map((_, i) => (
+            <div key={i} className={`h-2 flex-1 rounded-full ${i + 1 <= stepDisplay ? "bg-primary" : "bg-muted"}`} />
           ))}
         </div>
-        <div className="text-xs text-muted-foreground">Step {step} of 3</div>
+        <div className="text-xs text-muted-foreground">Step {stepDisplay} of {totalSteps}</div>
 
         {step === 1 && (
+          <div className="space-y-4">
+            <h1 className="text-2xl font-semibold">What will you use FinTask for?</h1>
+            <p className="text-sm text-muted-foreground">You can change this later in Settings.</p>
+            <div className="grid gap-3">
+              {[
+                { v: "both", icon: "✨", title: "Both", desc: "Money + tasks in one place" },
+                { v: "finance", icon: "💰", title: "Finance only", desc: "Track transactions, budgets, savings" },
+                { v: "tasks", icon: "✅", title: "Tasks only", desc: "Plan and manage your to-dos" },
+              ].map((o: any) => (
+                <button key={o.v} type="button" onClick={() => setFocus(o.v)}
+                  className={`text-left rounded-xl border-2 p-4 transition-colors ${focus === o.v ? "border-primary bg-primary-soft" : "border-border hover:border-primary/40"}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{o.icon}</span>
+                    <div>
+                      <div className="font-semibold">{o.title}</div>
+                      <div className="text-xs text-muted-foreground">{o.desc}</div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <Button onClick={() => setStep(2)} className="w-full">Continue</Button>
+          </div>
+        )}
+
+        {step === 2 && (
           <div className="space-y-4">
             <h1 className="text-2xl font-semibold">Tell us about yourself</h1>
             <div>
               <Label>Your name</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" />
             </div>
-            <div>
-              <Label>Default currency</Label>
-              <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="KES">KES — Kenyan Shilling</SelectItem>
-                  <SelectItem value="USD">USD — US Dollar</SelectItem>
-                  <SelectItem value="EUR">EUR — Euro</SelectItem>
-                  <SelectItem value="GBP">GBP — British Pound</SelectItem>
-                </SelectContent>
-              </Select>
+            {needsFinance && (
+              <div>
+                <Label>Default currency</Label>
+                <Select value={currency} onValueChange={setCurrency}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="KES">KES — Kenyan Shilling</SelectItem>
+                    <SelectItem value="USD">USD — US Dollar</SelectItem>
+                    <SelectItem value="EUR">EUR — Euro</SelectItem>
+                    <SelectItem value="GBP">GBP — British Pound</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={back} className="flex-1">Back</Button>
+              <Button onClick={next} disabled={!name} className="flex-1">Continue</Button>
             </div>
-            <Button onClick={() => setStep(2)} disabled={!name} className="w-full">Continue</Button>
           </div>
         )}
 
-        {step === 2 && (
+        {step === 3 && needsFinance && (
           <div className="space-y-4">
             <h1 className="text-2xl font-semibold">Set up your wallets</h1>
             <p className="text-sm text-muted-foreground">Add at least one place where you keep your money.</p>
@@ -138,26 +183,30 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
               <Plus className="h-4 w-4 mr-1" /> Add wallet
             </Button>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep(1)} className="flex-1">Back</Button>
-              <Button onClick={() => setStep(3)} disabled={!wallets.some(w => w.name)} className="flex-1">Continue</Button>
+              <Button variant="outline" onClick={back} className="flex-1">Back</Button>
+              <Button onClick={next} disabled={!wallets.some(w => w.name)} className="flex-1">Continue</Button>
             </div>
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <div className="space-y-4">
             <h1 className="text-2xl font-semibold">You're all set! 🎉</h1>
             <p className="text-sm text-muted-foreground">
-              We've pre-loaded the standard M-Pesa transaction fee schedule and a starter set of categories. You can fully customize them anytime in Settings.
+              {needsFinance
+                ? "We've pre-loaded the standard M-Pesa transaction fee schedule and starter categories. Customize anytime in Settings."
+                : "Your task workspace is ready. You can enable Finance later in Settings."}
             </p>
             <ul className="space-y-2 text-sm">
               <li className="flex items-center gap-2"><Check className="h-4 w-4 text-success" /> Profile created</li>
-              <li className="flex items-center gap-2"><Check className="h-4 w-4 text-success" /> {wallets.filter(w => w.name).length} wallet(s) ready</li>
-              <li className="flex items-center gap-2"><Check className="h-4 w-4 text-success" /> M-Pesa fee schedule loaded</li>
-              <li className="flex items-center gap-2"><Check className="h-4 w-4 text-success" /> 10 default categories</li>
+              {needsFinance && <>
+                <li className="flex items-center gap-2"><Check className="h-4 w-4 text-success" /> {wallets.filter(w => w.name).length} wallet(s) ready</li>
+                <li className="flex items-center gap-2"><Check className="h-4 w-4 text-success" /> M-Pesa fee schedule loaded</li>
+                <li className="flex items-center gap-2"><Check className="h-4 w-4 text-success" /> 10 default categories</li>
+              </>}
             </ul>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep(2)} className="flex-1">Back</Button>
+              <Button variant="outline" onClick={back} className="flex-1">Back</Button>
               <Button onClick={finish} disabled={saving} className="flex-1">{saving ? "Setting up…" : "Enter FinTask"}</Button>
             </div>
           </div>
@@ -166,3 +215,4 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
     </div>
   );
 }
+
