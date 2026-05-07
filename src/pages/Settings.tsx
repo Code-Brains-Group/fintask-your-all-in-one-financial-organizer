@@ -75,6 +75,16 @@ export default function Settings() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div><Label>Workspace focus</Label>
+                  <Select value={profile.feature_focus || "both"} onValueChange={(v) => setProfile({ ...profile, feature_focus: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="both">✨ Both — Finance + Tasks</SelectItem>
+                      <SelectItem value="finance">💰 Finance only</SelectItem>
+                      <SelectItem value="tasks">✅ Tasks only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Button onClick={saveProfile}>Save changes</Button>
               </>}
             </CardContent>
