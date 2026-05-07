@@ -158,6 +158,32 @@ export default function Dashboard() {
         <Button asChild><Link to="/finance/transactions"><Plus className="h-4 w-4 mr-1" /> Add transaction</Link></Button>
       </div>
 
+      {pending.length > 0 && (
+        <Card className="border-warning/50 bg-warning-soft">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base text-warning flex items-center gap-2">
+              <Repeat className="h-4 w-4" /> Recurring approvals pending ({pending.length})
+            </CardTitle>
+            <Link to="/finance/recurring" className="text-xs text-primary hover:underline">View all</Link>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pending.slice(0, 3).map(p => {
+              const r = ruleFor(p.rule_id); if (!r) return null;
+              return (
+                <div key={p.id} className="flex items-center gap-3 bg-card border rounded-lg p-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{r.description} · {fmtKES(r.amount)}</div>
+                    <div className="text-xs text-muted-foreground">Due {fmtDate(p.due_date)}</div>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => skip(p)}><X className="h-4 w-4 mr-1"/>Skip</Button>
+                  <Button size="sm" onClick={() => approve(p)}><Check className="h-4 w-4 mr-1"/>Approve</Button>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stat cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Balance" value={fmtKES(totalBalance)} icon={Wallet} tone="primary" />
@@ -165,6 +191,25 @@ export default function Dashboard() {
         <StatCard label="Expenses (this month)" value={fmtKES(expense)} icon={TrendingDown} tone="danger" />
         <StatCard label="Transaction Costs" value={fmtKES(fees)} icon={Receipt} tone="warning" />
       </div>
+
+      {/* Task spend insights */}
+      {(() => {
+        const taskTx = transactions.filter(t => t.task_id);
+        if (taskTx.length === 0) return null;
+        const totalSpent = taskTx.reduce((a, t) => a + Number(t.amount) + Number(t.fee || 0), 0);
+        const totalBudget = allTasks.reduce((a, t) => a + Number(t.planned_cost || 0), 0);
+        const overBudget = allTasks.filter(t => {
+          const spent = taskTx.filter(x => x.task_id === t.id).reduce((a, x) => a + Number(x.amount) + Number(x.fee || 0), 0);
+          return Number(t.planned_cost || 0) > 0 && spent > Number(t.planned_cost);
+        }).length;
+        return (
+          <div className="grid gap-4 md:grid-cols-3">
+            <StatCard label="Spent on tasks" value={fmtKES(totalSpent)} icon={Receipt} tone="warning" />
+            <StatCard label="Task budgets" value={fmtKES(totalBudget)} icon={Wallet} tone="primary" />
+            <StatCard label="Over budget" value={String(overBudget)} icon={TrendingDown} tone="danger" />
+          </div>
+        );
+      })()}
 
       {/* Charts */}
       <div className="grid gap-4 lg:grid-cols-3">
