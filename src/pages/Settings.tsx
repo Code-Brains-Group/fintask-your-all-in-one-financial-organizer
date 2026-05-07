@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 export default function Settings() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, refreshFocus } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [wallets, setWallets] = useState<any[]>([]);
@@ -36,7 +36,10 @@ export default function Settings() {
   useEffect(() => { load(); }, [user]);
 
   const saveProfile = async () => {
-    await supabase.from("profiles").update({ display_name: profile.display_name, currency: profile.currency }).eq("id", user!.id);
+    await supabase.from("profiles").update({
+      display_name: profile.display_name, currency: profile.currency, feature_focus: profile.feature_focus,
+    }).eq("id", user!.id);
+    await refreshFocus();
     toast.success("Profile updated");
   };
 
