@@ -71,8 +71,8 @@ export default function AppLayout() {
         </div>
         <nav className="space-y-1 flex-1 overflow-y-auto">
           <SideLink to="/" label="Dashboard" icon={LayoutDashboard} />
-          <Group title="Finance" icon={Wallet} items={finance} defaultOpen />
-          <Group title="Tasks" icon={ListChecks} items={tasks} />
+          {showFinance && <Group title="Finance" icon={Wallet} items={finance} defaultOpen />}
+          {showTasks && <Group title="Tasks" icon={ListChecks} items={tasks} defaultOpen={!showFinance} />}
           <SideLink to="/settings" label="Settings" icon={Settings} />
         </nav>
         <div className="border-t pt-3 mt-3 space-y-2">
