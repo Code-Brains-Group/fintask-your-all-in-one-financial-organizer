@@ -5,7 +5,8 @@ import { fmtKES, fmtDate } from "@/lib/finance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { TrendingUp, TrendingDown, Wallet, Receipt, CheckCircle2, Plus } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Receipt, CheckCircle2, Plus, Repeat, Check, X } from "lucide-react";
+import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
