@@ -5,7 +5,8 @@ import { fmtKES, fmtDate } from "@/lib/finance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { TrendingUp, TrendingDown, Wallet, Receipt, CheckCircle2, Plus } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Receipt, CheckCircle2, Plus, Repeat, Check, X } from "lucide-react";
+import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -24,29 +25,54 @@ export default function Dashboard() {
   const [wallets, setWallets] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
+  const [allTasks, setAllTasks] = useState<any[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
   const [contributions, setContributions] = useState<any[]>([]);
+  const [pending, setPending] = useState<any[]>([]);
+  const [rules, setRules] = useState<any[]>([]);
 
-  useEffect(() => {
+  const loadAll = async () => {
     if (!user) return;
-    (async () => {
-      const [tx, w, c, t, g, sc] = await Promise.all([
-        supabase.from("transactions").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(500),
-        supabase.from("wallets").select("*").eq("user_id", user.id),
-        supabase.from("categories").select("*").eq("user_id", user.id),
-        supabase.from("tasks").select("*").eq("user_id", user.id).neq("status", "done").order("due_date", { ascending: true, nullsFirst: false }).limit(3),
-        supabase.from("savings_goals").select("*").eq("user_id", user.id).eq("completed", false),
-        supabase.from("savings_contributions").select("*").eq("user_id", user.id),
-      ]);
-      setTransactions(tx.data || []);
-      setWallets(w.data || []);
-      setCategories(c.data || []);
-      setTasks(t.data || []);
-      setGoals(g.data || []);
-      setContributions(sc.data || []);
-      setLoading(false);
-    })();
-  }, [user]);
+    const [tx, w, c, t, ta, g, sc, p, r] = await Promise.all([
+      supabase.from("transactions").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(500),
+      supabase.from("wallets").select("*").eq("user_id", user.id),
+      supabase.from("categories").select("*").eq("user_id", user.id),
+      supabase.from("tasks").select("*").eq("user_id", user.id).neq("status", "done").order("due_date", { ascending: true, nullsFirst: false }).limit(3),
+      supabase.from("tasks").select("*").eq("user_id", user.id),
+      supabase.from("savings_goals").select("*").eq("user_id", user.id).eq("completed", false),
+      supabase.from("savings_contributions").select("*").eq("user_id", user.id),
+      supabase.from("pending_recurring").select("*").eq("user_id", user.id).eq("status", "pending"),
+      supabase.from("recurring_rules").select("*").eq("user_id", user.id),
+    ]);
+    setTransactions(tx.data || []);
+    setWallets(w.data || []);
+    setCategories(c.data || []);
+    setTasks(t.data || []);
+    setAllTasks(ta.data || []);
+    setGoals(g.data || []);
+    setContributions(sc.data || []);
+    setPending(p.data || []);
+    setRules(r.data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadAll(); }, [user]);
+
+  const ruleFor = (id: string) => rules.find(r => r.id === id);
+  const approve = async (p: any) => {
+    const r = ruleFor(p.rule_id); if (!r) return;
+    await supabase.from("transactions").insert({
+      user_id: user!.id, description: r.description, amount: Number(r.amount), type: r.type,
+      category_id: r.category_id, wallet_id: r.wallet_id, date: p.due_date,
+      method: r.method || "direct", recurring_rule_id: r.id,
+    });
+    await supabase.from("pending_recurring").update({ status: "approved" }).eq("id", p.id);
+    toast.success("Approved & added"); loadAll();
+  };
+  const skip = async (p: any) => {
+    await supabase.from("pending_recurring").update({ status: "skipped" }).eq("id", p.id);
+    loadAll();
+  };
 
   if (loading) {
     return (
@@ -132,6 +158,32 @@ export default function Dashboard() {
         <Button asChild><Link to="/finance/transactions"><Plus className="h-4 w-4 mr-1" /> Add transaction</Link></Button>
       </div>
 
+      {pending.length > 0 && (
+        <Card className="border-warning/50 bg-warning-soft">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base text-warning flex items-center gap-2">
+              <Repeat className="h-4 w-4" /> Recurring approvals pending ({pending.length})
+            </CardTitle>
+            <Link to="/finance/recurring" className="text-xs text-primary hover:underline">View all</Link>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pending.slice(0, 3).map(p => {
+              const r = ruleFor(p.rule_id); if (!r) return null;
+              return (
+                <div key={p.id} className="flex items-center gap-3 bg-card border rounded-lg p-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{r.description} · {fmtKES(r.amount)}</div>
+                    <div className="text-xs text-muted-foreground">Due {fmtDate(p.due_date)}</div>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => skip(p)}><X className="h-4 w-4 mr-1"/>Skip</Button>
+                  <Button size="sm" onClick={() => approve(p)}><Check className="h-4 w-4 mr-1"/>Approve</Button>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stat cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Balance" value={fmtKES(totalBalance)} icon={Wallet} tone="primary" />
@@ -139,6 +191,25 @@ export default function Dashboard() {
         <StatCard label="Expenses (this month)" value={fmtKES(expense)} icon={TrendingDown} tone="danger" />
         <StatCard label="Transaction Costs" value={fmtKES(fees)} icon={Receipt} tone="warning" />
       </div>
+
+      {/* Task spend insights */}
+      {(() => {
+        const taskTx = transactions.filter(t => t.task_id);
+        if (taskTx.length === 0) return null;
+        const totalSpent = taskTx.reduce((a, t) => a + Number(t.amount) + Number(t.fee || 0), 0);
+        const totalBudget = allTasks.reduce((a, t) => a + Number(t.planned_cost || 0), 0);
+        const overBudget = allTasks.filter(t => {
+          const spent = taskTx.filter(x => x.task_id === t.id).reduce((a, x) => a + Number(x.amount) + Number(x.fee || 0), 0);
+          return Number(t.planned_cost || 0) > 0 && spent > Number(t.planned_cost);
+        }).length;
+        return (
+          <div className="grid gap-4 md:grid-cols-3">
+            <StatCard label="Spent on tasks" value={fmtKES(totalSpent)} icon={Receipt} tone="warning" />
+            <StatCard label="Task budgets" value={fmtKES(totalBudget)} icon={Wallet} tone="primary" />
+            <StatCard label="Over budget" value={String(overBudget)} icon={TrendingDown} tone="danger" />
+          </div>
+        );
+      })()}
 
       {/* Charts */}
       <div className="grid gap-4 lg:grid-cols-3">
