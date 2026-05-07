@@ -92,11 +92,11 @@ export default function AppLayout() {
       {/* Mobile bottom nav */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-card border-t flex justify-around py-2 shadow-lg">
         {[
-          { to: "/", icon: LayoutDashboard, label: "Home" },
-          { to: "/finance/transactions", icon: Receipt, label: "Money" },
-          { to: "/tasks", icon: ListTodo, label: "Tasks" },
-          { to: "/settings", icon: Settings, label: "Settings" },
-        ].map((i) => (
+          { to: "/", icon: LayoutDashboard, label: "Home", show: true },
+          { to: "/finance/transactions", icon: Receipt, label: "Money", show: showFinance },
+          { to: "/tasks", icon: ListTodo, label: "Tasks", show: showTasks },
+          { to: "/settings", icon: Settings, label: "Settings", show: true },
+        ].filter(i => i.show).map((i) => (
           <NavLink key={i.to} to={i.to} end className={({ isActive }) =>
             `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-xs ${isActive ? "text-primary" : "text-muted-foreground"}`
           }>
