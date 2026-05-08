@@ -312,6 +312,7 @@ export type Database = {
           method: string | null
           next_due: string
           start_date: string
+          task_id: string | null
           type: string
           until_date: string | null
           user_id: string
@@ -328,6 +329,7 @@ export type Database = {
           method?: string | null
           next_due?: string
           start_date?: string
+          task_id?: string | null
           type: string
           until_date?: string | null
           user_id: string
@@ -344,6 +346,7 @@ export type Database = {
           method?: string | null
           next_due?: string
           start_date?: string
+          task_id?: string | null
           type?: string
           until_date?: string | null
           user_id?: string

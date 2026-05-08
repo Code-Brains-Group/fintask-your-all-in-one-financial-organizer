@@ -1,0 +1,1 @@
+ALTER TABLE public.recurring_rules ADD COLUMN task_id uuid;
