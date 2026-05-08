@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Wallet, ListChecks, Settings, PieChart, Target,
-  Repeat, FileBarChart, KanbanSquare, ListTodo, LogOut, Receipt, ChevronDown, BarChart3
+  Repeat, FileBarChart, KanbanSquare, ListTodo, LogOut, Receipt, ChevronDown, BarChart3, GraduationCap
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -73,6 +73,7 @@ export default function AppLayout() {
           <SideLink to="/" label="Dashboard" icon={LayoutDashboard} />
           {showFinance && <Group title="Finance" icon={Wallet} items={finance} defaultOpen />}
           {showTasks && <Group title="Tasks" icon={ListChecks} items={tasks} defaultOpen={!showFinance} />}
+          <SideLink to="/applications" label="Applications" icon={GraduationCap} />
           <SideLink to="/settings" label="Settings" icon={Settings} />
         </nav>
         <div className="border-t pt-3 mt-3 space-y-2">

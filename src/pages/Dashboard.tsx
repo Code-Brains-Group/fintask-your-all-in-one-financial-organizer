@@ -64,7 +64,7 @@ export default function Dashboard() {
     await supabase.from("transactions").insert({
       user_id: user!.id, description: r.description, amount: Number(r.amount), type: r.type,
       category_id: r.category_id, wallet_id: r.wallet_id, date: p.due_date,
-      method: r.method || "direct", recurring_rule_id: r.id,
+      method: r.method || "direct", recurring_rule_id: r.id, task_id: r.task_id || null,
     });
     await supabase.from("pending_recurring").update({ status: "approved" }).eq("id", p.id);
     toast.success("Approved & added"); loadAll();

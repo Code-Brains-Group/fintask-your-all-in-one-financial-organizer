@@ -26,16 +26,24 @@ export default function Recurring() {
   const [pending, setPending] = useState<any[]>([]);
   const [wallets, setWallets] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [taskSpend, setTaskSpend] = useState<Record<string, number>>({});
 
   const load = async () => {
     if (!user) return;
-    const [r, p, w, c] = await Promise.all([
+    const [r, p, w, c, t, tx] = await Promise.all([
       supabase.from("recurring_rules").select("*").eq("user_id", user.id).order("next_due"),
       supabase.from("pending_recurring").select("*").eq("user_id", user.id).eq("status", "pending"),
       supabase.from("wallets").select("*").eq("user_id", user.id),
       supabase.from("categories").select("*").eq("user_id", user.id),
+      supabase.from("tasks").select("id,title,planned_cost,status").eq("user_id", user.id),
+      supabase.from("transactions").select("task_id,amount,fee").eq("user_id", user.id).not("task_id", "is", null),
     ]);
     setRules(r.data || []); setPending(p.data || []); setWallets(w.data || []); setCategories(c.data || []);
+    setTasks(t.data || []);
+    const spend: Record<string, number> = {};
+    (tx.data || []).forEach((x: any) => { spend[x.task_id] = (spend[x.task_id] || 0) + Number(x.amount) + Number(x.fee || 0); });
+    setTaskSpend(spend);
   };
   useEffect(() => { load(); }, [user]);
 
@@ -72,7 +80,7 @@ export default function Recurring() {
     await supabase.from("transactions").insert({
       user_id: user!.id, description: r.description, amount: Number(r.amount), type: r.type,
       category_id: r.category_id, wallet_id: r.wallet_id, date: p.due_date,
-      method: r.method || "direct", recurring_rule_id: r.id,
+      method: r.method || "direct", recurring_rule_id: r.id, task_id: r.task_id || null,
     });
     await supabase.from("pending_recurring").update({ status: "approved" }).eq("id", p.id);
     toast.success("Approved & added"); load();
@@ -93,7 +101,7 @@ export default function Recurring() {
           <h1 className="text-2xl font-bold">Recurring Transactions</h1>
           <p className="text-muted-foreground text-sm">Auto-generate rent, transport, shopping etc. — approve when due</p>
         </div>
-        <NewRule wallets={wallets} categories={categories} onSaved={load} />
+        <NewRule wallets={wallets} categories={categories} tasks={tasks} onSaved={load} />
       </div>
 
       {pending.length > 0 && (
@@ -102,11 +110,15 @@ export default function Recurring() {
           <CardContent className="space-y-2">
             {pending.map(p => {
               const r = ruleFor(p.rule_id); if (!r) return null;
+              const task = r.task_id ? tasks.find(t => t.id === r.task_id) : null;
               return (
-                <div key={p.id} className="flex items-center gap-3 bg-card border rounded-lg p-3">
-                  <div className="flex-1">
+                <div key={p.id} className="flex items-center gap-3 bg-card border rounded-lg p-3 flex-wrap">
+                  <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium">{r.description} · {fmtKES(r.amount)}</div>
-                    <div className="text-xs text-muted-foreground">Due {fmtDate(p.due_date)} · {walletName(r.wallet_id)}</div>
+                    <div className="text-xs text-muted-foreground">
+                      Due {fmtDate(p.due_date)} · {walletName(r.wallet_id)}
+                      {task && <> · 🎯 <span className="text-primary">{task.title}</span></>}
+                    </div>
                   </div>
                   <Button size="sm" variant="outline" onClick={() => skip(p)}><X className="h-4 w-4 mr-1"/>Skip</Button>
                   <Button size="sm" onClick={() => approve(p)}><Check className="h-4 w-4 mr-1"/>Approve</Button>
@@ -122,19 +134,32 @@ export default function Recurring() {
         <CardContent>
           {rules.length === 0 ? <div className="text-center py-8 text-muted-foreground text-sm">No recurring rules yet</div> : (
             <div className="space-y-2">
-              {rules.map(r => (
-                <div key={r.id} className="flex items-center gap-3 border rounded-lg p-3">
-                  <Repeat className="h-4 w-4 text-primary" />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">{r.description}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {fmtKES(r.amount)} · {r.frequency} · {catName(r.category_id)} · Next: {fmtDate(r.next_due)}
+              {rules.map(r => {
+                const task = r.task_id ? tasks.find(t => t.id === r.task_id) : null;
+                const spent = task ? (taskSpend[task.id] || 0) : 0;
+                const budget = task ? Number(task.planned_cost || 0) : 0;
+                return (
+                  <div key={r.id} className="flex items-center gap-3 border rounded-lg p-3 flex-wrap">
+                    <Repeat className="h-4 w-4 text-primary" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium">{r.description}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {fmtKES(r.amount)} · {r.frequency} · {catName(r.category_id)} · Next: {fmtDate(r.next_due)}
+                      </div>
+                      {task && (
+                        <div className="text-xs mt-1">
+                          🎯 <span className="text-primary font-medium">{task.title}</span>
+                          {budget > 0 && <span className={spent > budget ? "text-danger ml-2" : "text-muted-foreground ml-2"}>
+                            · Spent {fmtKES(spent)} / {fmtKES(budget)}
+                          </span>}
+                        </div>
+                      )}
                     </div>
+                    <Badge variant="outline" className="capitalize">{r.type}</Badge>
+                    <Button size="icon" variant="ghost" onClick={() => removeRule(r.id)}><Trash2 className="h-4 w-4" /></Button>
                   </div>
-                  <Badge variant="outline" className="capitalize">{r.type}</Badge>
-                  <Button size="icon" variant="ghost" onClick={() => removeRule(r.id)}><Trash2 className="h-4 w-4" /></Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -143,7 +168,7 @@ export default function Recurring() {
   );
 }
 
-function NewRule({ wallets, categories, onSaved }: any) {
+function NewRule({ wallets, categories, tasks, onSaved }: any) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState("");
@@ -152,6 +177,7 @@ function NewRule({ wallets, categories, onSaved }: any) {
   const [frequency, setFrequency] = useState("monthly");
   const [walletId, setWalletId] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [taskId, setTaskId] = useState("");
   const [method, setMethod] = useState("direct");
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
 
@@ -159,9 +185,10 @@ function NewRule({ wallets, categories, onSaved }: any) {
     if (!description || !amount || !walletId) { toast.error("Fill required fields"); return; }
     await supabase.from("recurring_rules").insert({
       user_id: user!.id, description, amount: Number(amount), type, frequency,
-      wallet_id: walletId, category_id: categoryId || null, method, start_date: startDate, next_due: startDate,
+      wallet_id: walletId, category_id: categoryId || null, task_id: taskId || null,
+      method, start_date: startDate, next_due: startDate,
     });
-    setDescription(""); setAmount(""); setOpen(false); onSaved(); toast.success("Recurring rule created");
+    setDescription(""); setAmount(""); setTaskId(""); setOpen(false); onSaved(); toast.success("Recurring rule created");
   };
 
   return (
@@ -202,6 +229,15 @@ function NewRule({ wallets, categories, onSaved }: any) {
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
               <SelectContent>{categories.filter((c:any) => c.type === type).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div><Label>Link to task (optional)</Label>
+            <Select value={taskId || "__none"} onValueChange={(v) => setTaskId(v === "__none" ? "" : v)}>
+              <SelectTrigger><SelectValue placeholder="No task" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">No task</SelectItem>
+                {tasks?.filter((t:any) => t.status !== "done").map((t: any) => <SelectItem key={t.id} value={t.id}>🎯 {t.title}</SelectItem>)}
+              </SelectContent>
             </Select>
           </div>
           <div><Label>Method</Label>
