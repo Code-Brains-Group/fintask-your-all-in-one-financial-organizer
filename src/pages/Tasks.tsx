@@ -11,8 +11,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, KanbanSquare, ListTodo, BarChart3, Pencil } from "lucide-react";
+import { Plus, Trash2, KanbanSquare, ListTodo, BarChart3, Pencil, CalendarPlus, Download } from "lucide-react";
 import { toast } from "sonner";
+import { buildICS, downloadICS, googleCalUrl } from "@/lib/ics";
 import { Link, useLocation } from "react-router-dom";
 import {
   DndContext, DragEndEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors,
@@ -111,6 +112,7 @@ export default function Tasks() {
                         </div>
                         <Badge variant="outline" className={s.bg + " " + s.text + " " + s.border}>{s.label}</Badge>
                         <Badge variant="outline" className={PRIORITY_COLORS[t.priority]}>{t.priority}</Badge>
+                        {t.due_date && <CalendarButtons task={t} />}
                         <TaskSheet task={t} onSaved={load} trigger={<Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button>} />
                         <Button size="icon" variant="ghost" onClick={() => remove(t.id)}><Trash2 className="h-4 w-4" /></Button>
                       </CardContent>
