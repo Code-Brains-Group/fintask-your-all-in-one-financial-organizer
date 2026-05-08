@@ -168,7 +168,7 @@ export default function Recurring() {
   );
 }
 
-function NewRule({ wallets, categories, onSaved }: any) {
+function NewRule({ wallets, categories, tasks, onSaved }: any) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState("");
@@ -177,6 +177,7 @@ function NewRule({ wallets, categories, onSaved }: any) {
   const [frequency, setFrequency] = useState("monthly");
   const [walletId, setWalletId] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [taskId, setTaskId] = useState("");
   const [method, setMethod] = useState("direct");
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
 
@@ -184,9 +185,10 @@ function NewRule({ wallets, categories, onSaved }: any) {
     if (!description || !amount || !walletId) { toast.error("Fill required fields"); return; }
     await supabase.from("recurring_rules").insert({
       user_id: user!.id, description, amount: Number(amount), type, frequency,
-      wallet_id: walletId, category_id: categoryId || null, method, start_date: startDate, next_due: startDate,
+      wallet_id: walletId, category_id: categoryId || null, task_id: taskId || null,
+      method, start_date: startDate, next_due: startDate,
     });
-    setDescription(""); setAmount(""); setOpen(false); onSaved(); toast.success("Recurring rule created");
+    setDescription(""); setAmount(""); setTaskId(""); setOpen(false); onSaved(); toast.success("Recurring rule created");
   };
 
   return (
@@ -227,6 +229,15 @@ function NewRule({ wallets, categories, onSaved }: any) {
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
               <SelectContent>{categories.filter((c:any) => c.type === type).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div><Label>Link to task (optional)</Label>
+            <Select value={taskId || "__none"} onValueChange={(v) => setTaskId(v === "__none" ? "" : v)}>
+              <SelectTrigger><SelectValue placeholder="No task" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">No task</SelectItem>
+                {tasks?.filter((t:any) => t.status !== "done").map((t: any) => <SelectItem key={t.id} value={t.id}>🎯 {t.title}</SelectItem>)}
+              </SelectContent>
             </Select>
           </div>
           <div><Label>Method</Label>
