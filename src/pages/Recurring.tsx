@@ -26,16 +26,24 @@ export default function Recurring() {
   const [pending, setPending] = useState<any[]>([]);
   const [wallets, setWallets] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [taskSpend, setTaskSpend] = useState<Record<string, number>>({});
 
   const load = async () => {
     if (!user) return;
-    const [r, p, w, c] = await Promise.all([
+    const [r, p, w, c, t, tx] = await Promise.all([
       supabase.from("recurring_rules").select("*").eq("user_id", user.id).order("next_due"),
       supabase.from("pending_recurring").select("*").eq("user_id", user.id).eq("status", "pending"),
       supabase.from("wallets").select("*").eq("user_id", user.id),
       supabase.from("categories").select("*").eq("user_id", user.id),
+      supabase.from("tasks").select("id,title,planned_cost,status").eq("user_id", user.id),
+      supabase.from("transactions").select("task_id,amount,fee").eq("user_id", user.id).not("task_id", "is", null),
     ]);
     setRules(r.data || []); setPending(p.data || []); setWallets(w.data || []); setCategories(c.data || []);
+    setTasks(t.data || []);
+    const spend: Record<string, number> = {};
+    (tx.data || []).forEach((x: any) => { spend[x.task_id] = (spend[x.task_id] || 0) + Number(x.amount) + Number(x.fee || 0); });
+    setTaskSpend(spend);
   };
   useEffect(() => { load(); }, [user]);
 
