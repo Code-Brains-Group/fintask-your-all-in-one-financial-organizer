@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      applications: {
+        Row: {
+          amount: number | null
+          applied_date: string | null
+          contact: string | null
+          created_at: string
+          deadline: string | null
+          id: string
+          kind: string
+          link: string | null
+          location: string | null
+          notes: string | null
+          organization: string | null
+          reminder_at: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          applied_date?: string | null
+          contact?: string | null
+          created_at?: string
+          deadline?: string | null
+          id?: string
+          kind?: string
+          link?: string | null
+          location?: string | null
+          notes?: string | null
+          organization?: string | null
+          reminder_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          applied_date?: string | null
+          contact?: string | null
+          created_at?: string
+          deadline?: string | null
+          id?: string
+          kind?: string
+          link?: string | null
+          location?: string | null
+          notes?: string | null
+          organization?: string | null
+          reminder_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       budget_items: {
         Row: {
           budget_id: string
