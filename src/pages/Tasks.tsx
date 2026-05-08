@@ -259,6 +259,23 @@ function StatTile({ label, value, tone }: any) {
   return <div className="ft-stat"><div className="text-sm text-muted-foreground">{label}</div><div className={`text-2xl font-bold mt-2 ${t}`}>{value}</div></div>;
 }
 
+function CalendarButtons({ task }: { task: any }) {
+  const ev = {
+    id: task.id, title: task.title, description: task.description || "",
+    start: new Date(task.due_date), end: new Date(new Date(task.due_date).getTime() + 60*60*1000),
+  };
+  return (
+    <>
+      <Button asChild size="icon" variant="ghost" title="Add to Google Calendar">
+        <a href={googleCalUrl(ev)} target="_blank" rel="noreferrer"><CalendarPlus className="h-4 w-4" /></a>
+      </Button>
+      <Button size="icon" variant="ghost" title="Download .ics" onClick={() => downloadICS(`${task.title}.ics`, buildICS([ev]))}>
+        <Download className="h-4 w-4" />
+      </Button>
+    </>
+  );
+}
+
 function TaskSheet({ task, onSaved, trigger }: { task?: any; onSaved: () => void; trigger?: React.ReactNode }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
