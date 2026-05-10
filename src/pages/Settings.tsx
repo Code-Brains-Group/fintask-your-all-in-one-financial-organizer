@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, LogOut } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Trash2, LogOut, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import HelpTour from "@/components/HelpTour";
 
 export default function Settings() {
   const { user, signOut, refreshFocus } = useAuth();
@@ -20,6 +22,7 @@ export default function Settings() {
   const [categories, setCategories] = useState<any[]>([]);
   const [tiers, setTiers] = useState<any[]>([]);
   const [providers, setProviders] = useState<any[]>([]);
+  const [tour, setTour] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -43,15 +46,35 @@ export default function Settings() {
     toast.success("Profile updated");
   };
 
+  const saveNotifications = async () => {
+    await supabase.from("profiles").update({
+      notify_email: profile.notify_email,
+      notify_tasks: profile.notify_tasks,
+      notify_applications: profile.notify_applications,
+      notify_recurring: profile.notify_recurring,
+      notify_budgets: profile.notify_budgets,
+      reminder_lead_minutes: Number(profile.reminder_lead_minutes) || 30,
+    }).eq("id", user!.id);
+    toast.success("Notification preferences saved");
+  };
+
+  const replayTour = async () => {
+    if (!user) return;
+    await supabase.from("profiles").update({ tour_completed: false }).eq("id", user.id);
+    setTour(true);
+  };
+
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
 
   return (
     <div className="space-y-6">
+      {tour && <HelpTour force onClose={() => setTour(false)} />}
       <h1 className="text-2xl font-bold">Settings</h1>
 
       <Tabs defaultValue="profile">
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="wallets">Wallets</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="costs">Transaction Costs</TabsTrigger>
