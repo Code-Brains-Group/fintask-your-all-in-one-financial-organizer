@@ -30,7 +30,11 @@ export default function Budgets() {
   };
   useEffect(() => { load(); }, [user]);
 
-  const monthBudgets = budgets.filter(b => !b.month || b.month === month);
+  const today = new Date().toISOString().slice(0, 10);
+  const monthBudgets = budgets.filter(b => {
+    if (b.period_start && b.period_end) return b.period_start <= today && today <= b.period_end;
+    return !b.month || b.month === month;
+  });
 
   const itemsFor = (bid: string) => items.filter(x => x.budget_id === bid);
   const spent = (bid: string) => itemsFor(bid).filter(x => x.purchased && x.transaction_id)
@@ -141,20 +145,62 @@ function NewBudget({ onSaved }: any) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(""); const [limit, setLimit] = useState("");
+  const [recurrence, setRecurrence] = useState("monthly");
+  const [autoRenew, setAutoRenew] = useState(true);
+  const [useCustom, setUseCustom] = useState(false);
+  const [periodStart, setPeriodStart] = useState(new Date().toISOString().slice(0, 10));
+  const [periodEnd, setPeriodEnd] = useState("");
   const month = new Date().toISOString().slice(0, 7);
+
+  const computeEnd = (start: string, freq: string) => {
+    const d = new Date(start);
+    if (freq === "weekly") d.setDate(d.getDate() + 6);
+    else if (freq === "yearly") { d.setFullYear(d.getFullYear() + 1); d.setDate(d.getDate() - 1); }
+    else { d.setMonth(d.getMonth() + 1); d.setDate(d.getDate() - 1); }
+    return d.toISOString().slice(0, 10);
+  };
+
   const submit = async () => {
     if (!name) return;
-    await supabase.from("budgets").insert({ user_id: user!.id, name, monthly_limit: Number(limit || 0), month });
+    const start = useCustom ? periodStart : new Date().toISOString().slice(0, 10);
+    const end = useCustom ? (periodEnd || computeEnd(start, recurrence)) : computeEnd(start, recurrence);
+    await supabase.from("budgets").insert({
+      user_id: user!.id, name, monthly_limit: Number(limit || 0), month,
+      period_start: start, period_end: end, recurrence, auto_renew: autoRenew,
+    });
     setName(""); setLimit(""); setOpen(false); onSaved(); toast.success("Budget created");
   };
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild><Button><Plus className="h-4 w-4 mr-1" /> New budget</Button></SheetTrigger>
-      <SheetContent className="sm:max-w-md">
+      <SheetContent className="sm:max-w-md overflow-y-auto">
         <SheetHeader><SheetTitle>New budget plan</SheetTitle></SheetHeader>
         <div className="space-y-4 mt-6">
           <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Monthly groceries" /></div>
-          <div><Label>Monthly limit (KES)</Label><Input type="number" value={limit} onChange={(e) => setLimit(e.target.value)} /></div>
+          <div><Label>Limit (KES)</Label><Input type="number" value={limit} onChange={(e) => setLimit(e.target.value)} /></div>
+          <div>
+            <Label>Recurrence</Label>
+            <select className="w-full border rounded-md h-10 px-3 bg-background" value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+              <option value="once">One-time</option>
+            </select>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={autoRenew} onCheckedChange={(v) => setAutoRenew(!!v)} />
+            Auto-renew at end of period
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={useCustom} onCheckedChange={(v) => setUseCustom(!!v)} />
+            Use custom start/end dates
+          </label>
+          {useCustom && (
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label className="text-xs">Start</Label><Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} /></div>
+              <div><Label className="text-xs">End</Label><Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} /></div>
+            </div>
+          )}
           <Button className="w-full" onClick={submit}>Create budget</Button>
         </div>
       </SheetContent>
