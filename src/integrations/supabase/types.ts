@@ -28,6 +28,7 @@ export type Database = {
           notes: string | null
           organization: string | null
           reminder_at: string | null
+          reminder_days_before: number | null
           status: string
           title: string
           updated_at: string
@@ -46,6 +47,7 @@ export type Database = {
           notes?: string | null
           organization?: string | null
           reminder_at?: string | null
+          reminder_days_before?: number | null
           status?: string
           title: string
           updated_at?: string
@@ -64,6 +66,7 @@ export type Database = {
           notes?: string | null
           organization?: string | null
           reminder_at?: string | null
+          reminder_days_before?: number | null
           status?: string
           title?: string
           updated_at?: string
@@ -106,30 +109,42 @@ export type Database = {
       }
       budgets: {
         Row: {
+          auto_renew: boolean
           category_id: string | null
           created_at: string
           id: string
           month: string | null
           monthly_limit: number
           name: string | null
+          period_end: string | null
+          period_start: string | null
+          recurrence: string
           user_id: string
         }
         Insert: {
+          auto_renew?: boolean
           category_id?: string | null
           created_at?: string
           id?: string
           month?: string | null
           monthly_limit: number
           name?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          recurrence?: string
           user_id: string
         }
         Update: {
+          auto_renew?: boolean
           category_id?: string | null
           created_at?: string
           id?: string
           month?: string | null
           monthly_limit?: number
           name?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          recurrence?: string
           user_id?: string
         }
         Relationships: [
@@ -272,8 +287,15 @@ export type Database = {
           display_name: string | null
           feature_focus: string
           id: string
+          notify_applications: boolean
+          notify_budgets: boolean
+          notify_email: boolean
+          notify_recurring: boolean
+          notify_tasks: boolean
           onboarded: boolean
+          reminder_lead_minutes: number
           theme: string
+          tour_completed: boolean
           updated_at: string
         }
         Insert: {
@@ -283,8 +305,15 @@ export type Database = {
           display_name?: string | null
           feature_focus?: string
           id: string
+          notify_applications?: boolean
+          notify_budgets?: boolean
+          notify_email?: boolean
+          notify_recurring?: boolean
+          notify_tasks?: boolean
           onboarded?: boolean
+          reminder_lead_minutes?: number
           theme?: string
+          tour_completed?: boolean
           updated_at?: string
         }
         Update: {
@@ -294,8 +323,15 @@ export type Database = {
           display_name?: string | null
           feature_focus?: string
           id?: string
+          notify_applications?: boolean
+          notify_budgets?: boolean
+          notify_email?: boolean
+          notify_recurring?: boolean
+          notify_tasks?: boolean
           onboarded?: boolean
+          reminder_lead_minutes?: number
           theme?: string
+          tour_completed?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -510,6 +546,7 @@ export type Database = {
           linked_transaction_id: string | null
           planned_cost: number | null
           priority: string
+          reminder_minutes: number | null
           status: string
           title: string
           updated_at: string
@@ -525,6 +562,7 @@ export type Database = {
           linked_transaction_id?: string | null
           planned_cost?: number | null
           priority?: string
+          reminder_minutes?: number | null
           status?: string
           title: string
           updated_at?: string
@@ -540,6 +578,7 @@ export type Database = {
           linked_transaction_id?: string | null
           planned_cost?: number | null
           priority?: string
+          reminder_minutes?: number | null
           status?: string
           title?: string
           updated_at?: string

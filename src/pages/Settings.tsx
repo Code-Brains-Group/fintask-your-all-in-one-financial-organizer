@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, LogOut } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Trash2, LogOut, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import HelpTour from "@/components/HelpTour";
 
 export default function Settings() {
   const { user, signOut, refreshFocus } = useAuth();
@@ -20,6 +22,7 @@ export default function Settings() {
   const [categories, setCategories] = useState<any[]>([]);
   const [tiers, setTiers] = useState<any[]>([]);
   const [providers, setProviders] = useState<any[]>([]);
+  const [tour, setTour] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -43,15 +46,35 @@ export default function Settings() {
     toast.success("Profile updated");
   };
 
+  const saveNotifications = async () => {
+    await supabase.from("profiles").update({
+      notify_email: profile.notify_email,
+      notify_tasks: profile.notify_tasks,
+      notify_applications: profile.notify_applications,
+      notify_recurring: profile.notify_recurring,
+      notify_budgets: profile.notify_budgets,
+      reminder_lead_minutes: Number(profile.reminder_lead_minutes) || 30,
+    }).eq("id", user!.id);
+    toast.success("Notification preferences saved");
+  };
+
+  const replayTour = async () => {
+    if (!user) return;
+    await supabase.from("profiles").update({ tour_completed: false }).eq("id", user.id);
+    setTour(true);
+  };
+
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
 
   return (
     <div className="space-y-6">
+      {tour && <HelpTour force onClose={() => setTour(false)} />}
       <h1 className="text-2xl font-bold">Settings</h1>
 
       <Tabs defaultValue="profile">
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="wallets">Wallets</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="costs">Transaction Costs</TabsTrigger>
@@ -91,6 +114,39 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="notifications" className="mt-4">
+          <Card><CardHeader><CardTitle className="text-base">Notifications</CardTitle></CardHeader>
+            <CardContent className="space-y-4 max-w-md">
+              {profile && <>
+                <div className="flex items-center justify-between">
+                  <div><Label>Email reminders</Label><p className="text-xs text-muted-foreground">Daily digest sent to {user?.email}</p></div>
+                  <Switch checked={!!profile.notify_email} onCheckedChange={(v) => setProfile({ ...profile, notify_email: v })} />
+                </div>
+                <div className="border-t pt-4 space-y-3">
+                  <Label className="text-xs uppercase text-muted-foreground">Include in digest</Label>
+                  {[
+                    { key: "notify_tasks", label: "Tasks due or overdue" },
+                    { key: "notify_applications", label: "Application deadlines approaching" },
+                    { key: "notify_recurring", label: "Pending recurring approvals" },
+                    { key: "notify_budgets", label: "Budgets near or over limit" },
+                  ].map(o => (
+                    <div key={o.key} className="flex items-center justify-between">
+                      <span className="text-sm">{o.label}</span>
+                      <Switch checked={!!profile[o.key]} disabled={!profile.notify_email} onCheckedChange={(v) => setProfile({ ...profile, [o.key]: v })} />
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t pt-4">
+                  <Label>Default calendar reminder (minutes before)</Label>
+                  <Input type="number" value={profile.reminder_lead_minutes ?? 30} onChange={(e) => setProfile({ ...profile, reminder_lead_minutes: e.target.value })} />
+                  <p className="text-xs text-muted-foreground mt-1">Used when exporting tasks/applications to calendar.</p>
+                </div>
+                <Button onClick={saveNotifications}>Save preferences</Button>
+              </>}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="wallets" className="mt-4">
           <WalletsManager wallets={wallets} onChange={load} />
         </TabsContent>
@@ -106,6 +162,7 @@ export default function Settings() {
         <TabsContent value="account" className="mt-4">
           <Card><CardHeader><CardTitle className="text-base">Account</CardTitle></CardHeader>
             <CardContent className="space-y-3">
+              <Button variant="outline" onClick={replayTour}><PlayCircle className="h-4 w-4 mr-1" /> Replay onboarding tour</Button>
               <Button variant="outline" onClick={handleSignOut}><LogOut className="h-4 w-4 mr-1" /> Sign out</Button>
             </CardContent>
           </Card>

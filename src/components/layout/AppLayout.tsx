@@ -1,11 +1,12 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Wallet, ListChecks, Settings, PieChart, Target,
-  Repeat, FileBarChart, KanbanSquare, ListTodo, LogOut, Receipt, ChevronDown, BarChart3, GraduationCap
+  Repeat, FileBarChart, KanbanSquare, ListTodo, LogOut, Receipt, ChevronDown, BarChart3, GraduationCap, HelpCircle
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
+import HelpTour from "@/components/HelpTour";
 
 const finance = [
   { to: "/finance/transactions", label: "Transactions", icon: Receipt },
@@ -63,6 +64,7 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen w-full flex bg-background">
+      <HelpTour />
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 flex-col border-r bg-sidebar p-4 sticky top-0 h-screen">
         <div className="flex items-center gap-2 px-2 py-2 mb-4">
@@ -74,6 +76,7 @@ export default function AppLayout() {
           {showFinance && <Group title="Finance" icon={Wallet} items={finance} defaultOpen />}
           {showTasks && <Group title="Tasks" icon={ListChecks} items={tasks} defaultOpen={!showFinance} />}
           <SideLink to="/applications" label="Applications" icon={GraduationCap} />
+          <SideLink to="/help" label="Help & Tour" icon={HelpCircle} />
           <SideLink to="/settings" label="Settings" icon={Settings} />
         </nav>
         <div className="border-t pt-3 mt-3 space-y-2">
