@@ -114,6 +114,39 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="notifications" className="mt-4">
+          <Card><CardHeader><CardTitle className="text-base">Notifications</CardTitle></CardHeader>
+            <CardContent className="space-y-4 max-w-md">
+              {profile && <>
+                <div className="flex items-center justify-between">
+                  <div><Label>Email reminders</Label><p className="text-xs text-muted-foreground">Daily digest sent to {user?.email}</p></div>
+                  <Switch checked={!!profile.notify_email} onCheckedChange={(v) => setProfile({ ...profile, notify_email: v })} />
+                </div>
+                <div className="border-t pt-4 space-y-3">
+                  <Label className="text-xs uppercase text-muted-foreground">Include in digest</Label>
+                  {[
+                    { key: "notify_tasks", label: "Tasks due or overdue" },
+                    { key: "notify_applications", label: "Application deadlines approaching" },
+                    { key: "notify_recurring", label: "Pending recurring approvals" },
+                    { key: "notify_budgets", label: "Budgets near or over limit" },
+                  ].map(o => (
+                    <div key={o.key} className="flex items-center justify-between">
+                      <span className="text-sm">{o.label}</span>
+                      <Switch checked={!!profile[o.key]} disabled={!profile.notify_email} onCheckedChange={(v) => setProfile({ ...profile, [o.key]: v })} />
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t pt-4">
+                  <Label>Default calendar reminder (minutes before)</Label>
+                  <Input type="number" value={profile.reminder_lead_minutes ?? 30} onChange={(e) => setProfile({ ...profile, reminder_lead_minutes: e.target.value })} />
+                  <p className="text-xs text-muted-foreground mt-1">Used when exporting tasks/applications to calendar.</p>
+                </div>
+                <Button onClick={saveNotifications}>Save preferences</Button>
+              </>}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="wallets" className="mt-4">
           <WalletsManager wallets={wallets} onChange={load} />
         </TabsContent>
@@ -129,6 +162,7 @@ export default function Settings() {
         <TabsContent value="account" className="mt-4">
           <Card><CardHeader><CardTitle className="text-base">Account</CardTitle></CardHeader>
             <CardContent className="space-y-3">
+              <Button variant="outline" onClick={replayTour}><PlayCircle className="h-4 w-4 mr-1" /> Replay onboarding tour</Button>
               <Button variant="outline" onClick={handleSignOut}><LogOut className="h-4 w-4 mr-1" /> Sign out</Button>
             </CardContent>
           </Card>
