@@ -17,6 +17,7 @@ import Savings from "./pages/Savings";
 import Recurring from "./pages/Recurring";
 import Reports from "./pages/Reports";
 import Applications from "./pages/Applications";
+import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/tasks/board" element={<Tasks />} />
               <Route path="/tasks/dashboard" element={<Tasks />} />
               <Route path="/applications" element={<Applications />} />
+              <Route path="/help" element={<Help />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
