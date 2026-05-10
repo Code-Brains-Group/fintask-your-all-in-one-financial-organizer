@@ -76,7 +76,11 @@ export default function Budgets() {
             <CardHeader className="flex flex-row items-start justify-between">
               <div>
                 <CardTitle className="text-base">{b.name || "Untitled budget"}</CardTitle>
-                <div className="text-xs text-muted-foreground mt-0.5">Limit {fmtKES(limit)} · Planned {fmtKES(planned)} · Spent {fmtKES(sp)}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  Limit {fmtKES(limit)} · Planned {fmtKES(planned)} · Spent {fmtKES(sp)}
+                  {b.period_start && b.period_end && <> · {b.period_start} → {b.period_end}</>}
+                  {b.recurrence && b.recurrence !== "once" && <> · {b.recurrence}{b.auto_renew ? " (auto-renew)" : ""}</>}
+                </div>
               </div>
               <Button size="icon" variant="ghost" onClick={() => removeBudget(b.id)}><Trash2 className="h-4 w-4" /></Button>
             </CardHeader>
