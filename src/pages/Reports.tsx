@@ -64,7 +64,7 @@ export default function Reports() {
         <Button variant="outline" onClick={exportReport}><Download className="h-4 w-4 mr-1" /> Export</Button>
       </div>
 
-      <Card><CardContent className="p-4"><DateFilter value={filter} onChange={setFilter} /></CardContent></Card>
+      <Card><CardContent className="p-4"><DateFilter value={filter} onChange={setFilter} fiscal={fiscal} /></CardContent></Card>
 
       <div className="grid gap-4 md:grid-cols-4">
         <Stat label="Income" value={fmtKES(income)} tone="success" />
