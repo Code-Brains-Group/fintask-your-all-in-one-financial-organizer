@@ -178,7 +178,7 @@ export default function Recurring() {
 }
 
 function NewRule({ wallets, categories, tasks, onSaved }: any) {
-  const { user } = useAuth();
+  const { user, fiscal } = useAuth();
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -189,15 +189,23 @@ function NewRule({ wallets, categories, tasks, onSaved }: any) {
   const [taskId, setTaskId] = useState("");
   const [method, setMethod] = useState("direct");
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [alignFiscal, setAlignFiscal] = useState(false);
 
   const submit = async () => {
     if (!description || !amount || !walletId) { toast.error("Fill required fields"); return; }
+    let firstDue = startDate;
+    if (alignFiscal && (frequency === "monthly" || frequency === "yearly")) {
+      const d = new Date(startDate);
+      d.setDate(Math.min(28, fiscal.monthStartDay));
+      if (frequency === "yearly") d.setMonth(fiscal.yearStartMonth - 1);
+      firstDue = d.toISOString().slice(0, 10);
+    }
     await supabase.from("recurring_rules").insert({
       user_id: user!.id, description, amount: Number(amount), type, frequency,
       wallet_id: walletId, category_id: categoryId || null, task_id: taskId || null,
-      method, start_date: startDate, next_due: startDate,
+      method, start_date: startDate, next_due: firstDue, align_fiscal: alignFiscal,
     });
-    setDescription(""); setAmount(""); setTaskId(""); setOpen(false); onSaved(); toast.success("Recurring rule created");
+    setDescription(""); setAmount(""); setTaskId(""); setAlignFiscal(false); setOpen(false); onSaved(); toast.success("Recurring rule created");
   };
 
   return (
