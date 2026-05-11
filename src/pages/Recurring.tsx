@@ -12,11 +12,20 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Check, X, Repeat } from "lucide-react";
 import { toast } from "sonner";
 
-function nextDate(date: Date, freq: string): Date {
+function nextDate(date: Date, freq: string, align?: { day?: number; month?: number }): Date {
   const d = new Date(date);
-  if (freq === "weekly") d.setDate(d.getDate() + 7);
-  else if (freq === "monthly") d.setMonth(d.getMonth() + 1);
-  else if (freq === "yearly") d.setFullYear(d.getFullYear() + 1);
+  if (freq === "weekly") { d.setDate(d.getDate() + 7); return d; }
+  if (freq === "monthly") {
+    d.setMonth(d.getMonth() + 1);
+    if (align?.day) d.setDate(Math.min(28, align.day));
+    return d;
+  }
+  if (freq === "yearly") {
+    d.setFullYear(d.getFullYear() + 1);
+    if (align?.month) d.setMonth(align.month - 1);
+    if (align?.day) d.setDate(Math.min(28, align.day));
+    return d;
+  }
   return d;
 }
 
