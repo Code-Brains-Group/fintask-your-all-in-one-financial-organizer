@@ -7,9 +7,9 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { DateShortcut, rangeFor, DateRange } from "@/lib/dateFilters";
 
-export function DateFilter({ value, onChange }: { value: { shortcut: DateShortcut; range: DateRange; custom?: { from?: Date; to?: Date } }; onChange: (v: any) => void }) {
+export function DateFilter({ value, onChange, fiscal }: { value: { shortcut: DateShortcut; range: DateRange; custom?: { from?: Date; to?: Date } }; onChange: (v: any) => void; fiscal?: { monthStartDay?: number; yearStartMonth?: number } }) {
   const set = (shortcut: DateShortcut, custom?: { from?: Date; to?: Date }) => {
-    onChange({ shortcut, range: rangeFor(shortcut, custom), custom });
+    onChange({ shortcut, range: rangeFor(shortcut, custom, fiscal), custom });
   };
   const shortcuts: { key: DateShortcut; label: string }[] = [
     { key: "all", label: "All" },
