@@ -30,7 +30,7 @@ function nextDate(date: Date, freq: string, align?: { day?: number; month?: numb
 }
 
 export default function Recurring() {
-  const { user } = useAuth();
+  const { user, fiscal } = useAuth();
   const [rules, setRules] = useState<any[]>([]);
   const [pending, setPending] = useState<any[]>([]);
   const [wallets, setWallets] = useState<any[]>([]);
