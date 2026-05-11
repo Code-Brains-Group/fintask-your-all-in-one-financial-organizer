@@ -76,7 +76,7 @@ export default function AppLayout() {
           <SideLink to="/" label="Dashboard" icon={LayoutDashboard} />
           {showFinance && <Group title="Finance" icon={Wallet} items={finance} defaultOpen />}
           {showTasks && <Group title="Tasks" icon={ListChecks} items={tasks} defaultOpen={!showFinance} />}
-          <SideLink to="/applications" label="Applications" icon={GraduationCap} />
+          {showApplications && <SideLink to="/applications" label="Applications" icon={GraduationCap} />}
           <SideLink to="/help" label="Help & Tour" icon={HelpCircle} />
           <SideLink to="/settings" label="Settings" icon={Settings} />
         </nav>
