@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Wallet, Trash2, Plus, Check, ListChecks, Briefcase } from "lucide-react";
+import { Wallet, Trash2, Plus, Check } from "lucide-react";
 
 const DEFAULT_CATEGORIES = [
   { name: "Food", icon: "🍔", type: "expense" },
@@ -28,27 +28,40 @@ const MPESA_TIERS = {
   buygoods: [[1,35000,0]],
 };
 
+const MODULE_OPTIONS = [
+  { key: "finance", icon: "💰", title: "Finance Tracking", desc: "Transactions, budgets, savings, recurring rules" },
+  { key: "tasks", icon: "✅", title: "Task Management", desc: "To-do list, Kanban board, planned costs" },
+  { key: "applications", icon: "🎓", title: "Application Tracking", desc: "Scholarships and job applications with deadlines" },
+] as const;
+
 export default function Onboarding({ onDone }: { onDone: () => void }) {
   const { user, refreshFocus } = useAuth();
   const [step, setStep] = useState(1);
-  const [focus, setFocus] = useState<"tasks" | "finance" | "both">("both");
+  const [modules, setModules] = useState<string[]>(["finance", "tasks", "applications"]);
   const [name, setName] = useState("");
   const [currency, setCurrency] = useState("KES");
   const [wallets, setWallets] = useState<{ name: string; type: string; opening_balance: number }[]>([
     { name: "M-Pesa", type: "mpesa", opening_balance: 0 },
   ]);
   const [saving, setSaving] = useState(false);
-  const needsFinance = focus !== "tasks";
+
+  const needsFinance = modules.includes("finance");
+  const focus = needsFinance && modules.includes("tasks") ? "both" : needsFinance ? "finance" : modules.includes("tasks") ? "tasks" : "both";
 
   useEffect(() => {
     supabase.from("profiles").select("display_name,currency").eq("id", user!.id).maybeSingle()
       .then(({ data }) => { if (data) { setName(data.display_name || ""); setCurrency(data.currency || "KES"); } });
   }, [user]);
 
+  const toggle = (k: string) => setModules(m => m.includes(k) ? m.filter(x => x !== k) : [...m, k]);
+
   const finish = async () => {
     setSaving(true);
     try {
-      await supabase.from("profiles").upsert({ id: user!.id, display_name: name, currency, onboarded: true, feature_focus: focus });
+      await supabase.from("profiles").upsert({
+        id: user!.id, display_name: name, currency, onboarded: true,
+        feature_focus: focus, modules,
+      });
       if (needsFinance) {
         const validWallets = wallets.filter(w => w.name.trim());
         if (validWallets.length) {
@@ -96,27 +109,27 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
 
         {step === 1 && (
           <div className="space-y-4">
-            <h1 className="text-2xl font-semibold">What will you use FinTask for?</h1>
-            <p className="text-sm text-muted-foreground">You can change this later in Settings.</p>
+            <h1 className="text-2xl font-semibold">Pick your modules</h1>
+            <p className="text-sm text-muted-foreground">Tick everything you'd like to use. You can add or remove modules later in <span className="font-medium">Settings → Modules</span>.</p>
             <div className="grid gap-3">
-              {[
-                { v: "both", icon: "✨", title: "Both", desc: "Money + tasks in one place" },
-                { v: "finance", icon: "💰", title: "Finance only", desc: "Track transactions, budgets, savings" },
-                { v: "tasks", icon: "✅", title: "Tasks only", desc: "Plan and manage your to-dos" },
-              ].map((o: any) => (
-                <button key={o.v} type="button" onClick={() => setFocus(o.v)}
-                  className={`text-left rounded-xl border-2 p-4 transition-colors ${focus === o.v ? "border-primary bg-primary-soft" : "border-border hover:border-primary/40"}`}>
-                  <div className="flex items-center gap-3">
+              {MODULE_OPTIONS.map(o => {
+                const active = modules.includes(o.key);
+                return (
+                  <button key={o.key} type="button" onClick={() => toggle(o.key)}
+                    className={`text-left rounded-xl border-2 p-4 transition-colors flex items-center gap-3 ${active ? "border-primary bg-primary-soft" : "border-border hover:border-primary/40"}`}>
                     <span className="text-2xl">{o.icon}</span>
-                    <div>
+                    <div className="flex-1">
                       <div className="font-semibold">{o.title}</div>
                       <div className="text-xs text-muted-foreground">{o.desc}</div>
                     </div>
-                  </div>
-                </button>
-              ))}
+                    <div className={`h-5 w-5 rounded border-2 grid place-items-center ${active ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/40"}`}>
+                      {active && <Check className="h-3.5 w-3.5" />}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-            <Button onClick={() => setStep(2)} className="w-full">Continue</Button>
+            <Button onClick={() => setStep(2)} className="w-full" disabled={modules.length === 0}>Continue</Button>
           </div>
         )}
 
@@ -193,9 +206,8 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
           <div className="space-y-4">
             <h1 className="text-2xl font-semibold">You're all set! 🎉</h1>
             <p className="text-sm text-muted-foreground">
-              {needsFinance
-                ? "We've pre-loaded the standard M-Pesa transaction fee schedule and starter categories. Customize anytime in Settings."
-                : "Your task workspace is ready. You can enable Finance later in Settings."}
+              Modules enabled: <span className="font-medium">{modules.map(m => MODULE_OPTIONS.find(o => o.key === m)?.title).join(", ") || "none"}</span>.
+              Manage them anytime from Settings → Modules.
             </p>
             <ul className="space-y-2 text-sm">
               <li className="flex items-center gap-2"><Check className="h-4 w-4 text-success" /> Profile created</li>
@@ -215,4 +227,3 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
     </div>
   );
 }
-

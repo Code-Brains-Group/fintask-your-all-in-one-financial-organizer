@@ -7,15 +7,16 @@ import { useNavigate } from "react-router-dom";
 
 export const TOUR_STEPS = [
   { icon: "🏠", title: "Welcome to FinTask", body: "FinTask combines money tracking, task management, and application/scholarship tracking. Let's take a quick tour." },
+  { icon: "🧩", title: "Modules — pick what you need", body: "FinTask has three modules: Finance, Tasks and Applications. You ticked some at signup, but you can add or remove any of them anytime in Settings → Modules.", path: "/settings" },
   { icon: "💸", title: "Transactions", body: "Record income, expenses and transfers between wallets. M-Pesa fees auto-calculate. Filter by Today / Week / Month / Year or a custom range.", path: "/finance/transactions" },
   { icon: "📊", title: "Budgets & Plans", body: "List what you plan to buy, set a limit, then link real transactions. Budgets can recur weekly, monthly or yearly with auto-renew.", path: "/finance/budgets" },
   { icon: "🐷", title: "Savings Goals", body: "Set targets, contribute over time, watch progress bars fill up.", path: "/finance/savings" },
-  { icon: "🔁", title: "Recurring", body: "Define rules (rent, salary, subscriptions). Pending entries land on your Dashboard for one-tap Approve/Skip.", path: "/finance/recurring" },
-  { icon: "📈", title: "Reports", body: "Charts and breakdowns by category, wallet and time period. Export to CSV.", path: "/finance/reports" },
+  { icon: "🔁", title: "Recurring", body: "Define rules (rent, salary, subscriptions). Tick 'Align to fiscal period' to snap them to your custom month/year start. Pending entries land on the Dashboard for one-tap Approve/Skip.", path: "/finance/recurring" },
+  { icon: "📈", title: "Reports", body: "Charts and breakdowns by category, wallet and time period — using your custom fiscal month/year. Export to CSV.", path: "/finance/reports" },
   { icon: "✅", title: "Tasks", body: "List, Kanban board, or task dashboard. Drag cards between columns. Attach a planned cost and link transactions to see real spend per task.", path: "/tasks" },
   { icon: "🎓", title: "Applications", body: "Track scholarships and job applications with deadlines, statuses and reminders. Add to Google Calendar in one click.", path: "/applications" },
   { icon: "🔔", title: "Reminders & Calendar", body: "Tasks and applications can be exported to your calendar (.ics or Google) and you can opt in to email reminders in Settings → Notifications." },
-  { icon: "⚙️", title: "Make it yours", body: "Tweak wallets, categories, fee tiers, notification prefs and replay this tour anytime from Settings." },
+  { icon: "⚙️", title: "Make it yours", body: "Tweak modules, fiscal period, wallets, categories, fee tiers, notification prefs and replay this tour anytime from Settings." },
 ];
 
 export default function HelpTour({ force, onClose }: { force?: boolean; onClose?: () => void }) {

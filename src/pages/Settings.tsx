@@ -41,9 +41,22 @@ export default function Settings() {
   const saveProfile = async () => {
     await supabase.from("profiles").update({
       display_name: profile.display_name, currency: profile.currency, feature_focus: profile.feature_focus,
+      fiscal_month_start_day: Math.min(28, Math.max(1, Number(profile.fiscal_month_start_day) || 1)),
+      fiscal_year_start_month: Math.min(12, Math.max(1, Number(profile.fiscal_year_start_month) || 1)),
     }).eq("id", user!.id);
     await refreshFocus();
     toast.success("Profile updated");
+  };
+
+  const saveModules = async () => {
+    const mods = profile.modules?.length ? profile.modules : ["finance","tasks","applications"];
+    await supabase.from("profiles").update({ modules: mods }).eq("id", user!.id);
+    await refreshFocus();
+    toast.success("Modules updated");
+  };
+  const toggleModule = (k: string) => {
+    const cur: string[] = profile.modules || [];
+    setProfile({ ...profile, modules: cur.includes(k) ? cur.filter(x => x !== k) : [...cur, k] });
   };
 
   const saveNotifications = async () => {
@@ -74,6 +87,8 @@ export default function Settings() {
       <Tabs defaultValue="profile">
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="modules">Modules</TabsTrigger>
+          <TabsTrigger value="fiscal">Fiscal Period</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="wallets">Wallets</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
@@ -109,6 +124,63 @@ export default function Settings() {
                   </Select>
                 </div>
                 <Button onClick={saveProfile}>Save changes</Button>
+              </>}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="modules" className="mt-4">
+          <Card><CardHeader><CardTitle className="text-base">Modules</CardTitle></CardHeader>
+            <CardContent className="space-y-3 max-w-md">
+              {profile && <>
+                <p className="text-sm text-muted-foreground">Tick the modules you want available in the sidebar. You can change this anytime.</p>
+                {[
+                  { key: "finance", icon: "💰", title: "Finance Tracking", desc: "Transactions, budgets, savings, recurring" },
+                  { key: "tasks", icon: "✅", title: "Task Management", desc: "Lists, Kanban, planned costs" },
+                  { key: "applications", icon: "🎓", title: "Application Tracking", desc: "Scholarships & job applications" },
+                ].map(m => {
+                  const active = (profile.modules || []).includes(m.key);
+                  return (
+                    <button key={m.key} type="button" onClick={() => toggleModule(m.key)}
+                      className={`w-full text-left rounded-xl border-2 p-3 flex items-center gap-3 transition-colors ${active ? "border-primary bg-primary-soft" : "border-border hover:border-primary/40"}`}>
+                      <span className="text-2xl">{m.icon}</span>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{m.title}</div>
+                        <div className="text-xs text-muted-foreground">{m.desc}</div>
+                      </div>
+                      <Switch checked={active} onCheckedChange={() => toggleModule(m.key)} />
+                    </button>
+                  );
+                })}
+                <Button onClick={saveModules}>Save modules</Button>
+              </>}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="fiscal" className="mt-4">
+          <Card><CardHeader><CardTitle className="text-base">Fiscal Period</CardTitle></CardHeader>
+            <CardContent className="space-y-4 max-w-md">
+              {profile && <>
+                <p className="text-sm text-muted-foreground">Define when your financial month and year start. This affects "This month" / "This year" filters in Reports and aligned recurring rules.</p>
+                <div>
+                  <Label>Month starts on day</Label>
+                  <Input type="number" min={1} max={28} value={profile.fiscal_month_start_day ?? 1}
+                    onChange={(e) => setProfile({ ...profile, fiscal_month_start_day: e.target.value })} />
+                  <p className="text-xs text-muted-foreground mt-1">e.g. 25 if your salary lands on the 25th. Range 1–28.</p>
+                </div>
+                <div>
+                  <Label>Year starts in month</Label>
+                  <Select value={String(profile.fiscal_year_start_month ?? 1)} onValueChange={(v) => setProfile({ ...profile, fiscal_year_start_month: Number(v) })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {["January","February","March","April","May","June","July","August","September","October","November","December"].map((m,i) => (
+                        <SelectItem key={i} value={String(i+1)}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={saveProfile}>Save fiscal period</Button>
               </>}
             </CardContent>
           </Card>

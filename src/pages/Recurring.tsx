@@ -12,16 +12,25 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Check, X, Repeat } from "lucide-react";
 import { toast } from "sonner";
 
-function nextDate(date: Date, freq: string): Date {
+function nextDate(date: Date, freq: string, align?: { day?: number; month?: number }): Date {
   const d = new Date(date);
-  if (freq === "weekly") d.setDate(d.getDate() + 7);
-  else if (freq === "monthly") d.setMonth(d.getMonth() + 1);
-  else if (freq === "yearly") d.setFullYear(d.getFullYear() + 1);
+  if (freq === "weekly") { d.setDate(d.getDate() + 7); return d; }
+  if (freq === "monthly") {
+    d.setMonth(d.getMonth() + 1);
+    if (align?.day) d.setDate(Math.min(28, align.day));
+    return d;
+  }
+  if (freq === "yearly") {
+    d.setFullYear(d.getFullYear() + 1);
+    if (align?.month) d.setMonth(align.month - 1);
+    if (align?.day) d.setDate(Math.min(28, align.day));
+    return d;
+  }
   return d;
 }
 
 export default function Recurring() {
-  const { user } = useAuth();
+  const { user, fiscal } = useAuth();
   const [rules, setRules] = useState<any[]>([]);
   const [pending, setPending] = useState<any[]>([]);
   const [wallets, setWallets] = useState<any[]>([]);
@@ -60,7 +69,7 @@ export default function Recurring() {
           if (!exists) {
             await supabase.from("pending_recurring").insert({ user_id: user.id, rule_id: r.id, due_date: due.toISOString().slice(0,10) });
           }
-          due = nextDate(due, r.frequency);
+          due = nextDate(due, r.frequency, r.align_fiscal ? { day: fiscal.monthStartDay, month: fiscal.yearStartMonth } : undefined);
           if (r.until_date && due > new Date(r.until_date)) break;
         }
         if (due.toISOString().slice(0,10) !== r.next_due) {
@@ -169,7 +178,7 @@ export default function Recurring() {
 }
 
 function NewRule({ wallets, categories, tasks, onSaved }: any) {
-  const { user } = useAuth();
+  const { user, fiscal } = useAuth();
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -180,15 +189,23 @@ function NewRule({ wallets, categories, tasks, onSaved }: any) {
   const [taskId, setTaskId] = useState("");
   const [method, setMethod] = useState("direct");
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [alignFiscal, setAlignFiscal] = useState(false);
 
   const submit = async () => {
     if (!description || !amount || !walletId) { toast.error("Fill required fields"); return; }
+    let firstDue = startDate;
+    if (alignFiscal && (frequency === "monthly" || frequency === "yearly")) {
+      const d = new Date(startDate);
+      d.setDate(Math.min(28, fiscal.monthStartDay));
+      if (frequency === "yearly") d.setMonth(fiscal.yearStartMonth - 1);
+      firstDue = d.toISOString().slice(0, 10);
+    }
     await supabase.from("recurring_rules").insert({
       user_id: user!.id, description, amount: Number(amount), type, frequency,
       wallet_id: walletId, category_id: categoryId || null, task_id: taskId || null,
-      method, start_date: startDate, next_due: startDate,
+      method, start_date: startDate, next_due: firstDue, align_fiscal: alignFiscal,
     });
-    setDescription(""); setAmount(""); setTaskId(""); setOpen(false); onSaved(); toast.success("Recurring rule created");
+    setDescription(""); setAmount(""); setTaskId(""); setAlignFiscal(false); setOpen(false); onSaved(); toast.success("Recurring rule created");
   };
 
   return (
@@ -247,6 +264,12 @@ function NewRule({ wallets, categories, tasks, onSaved }: any) {
             </Select>
           </div>
           <div><Label>Start date</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
+          {(frequency === "monthly" || frequency === "yearly") && (
+            <label className="flex items-center gap-2 text-sm cursor-pointer p-3 rounded-lg border bg-muted/30">
+              <input type="checkbox" checked={alignFiscal} onChange={(e) => setAlignFiscal(e.target.checked)} />
+              <span>Align to my fiscal period (day {fiscal.monthStartDay}{frequency === "yearly" ? `, month ${fiscal.yearStartMonth}` : ""})</span>
+            </label>
+          )}
           <Button className="w-full" onClick={submit}>Create rule</Button>
         </div>
       </SheetContent>

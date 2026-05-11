@@ -286,7 +286,10 @@ export type Database = {
           currency: string
           display_name: string | null
           feature_focus: string
+          fiscal_month_start_day: number
+          fiscal_year_start_month: number
           id: string
+          modules: string[]
           notify_applications: boolean
           notify_budgets: boolean
           notify_email: boolean
@@ -304,7 +307,10 @@ export type Database = {
           currency?: string
           display_name?: string | null
           feature_focus?: string
+          fiscal_month_start_day?: number
+          fiscal_year_start_month?: number
           id: string
+          modules?: string[]
           notify_applications?: boolean
           notify_budgets?: boolean
           notify_email?: boolean
@@ -322,7 +328,10 @@ export type Database = {
           currency?: string
           display_name?: string | null
           feature_focus?: string
+          fiscal_month_start_day?: number
+          fiscal_year_start_month?: number
           id?: string
+          modules?: string[]
           notify_applications?: boolean
           notify_budgets?: boolean
           notify_email?: boolean
@@ -339,6 +348,7 @@ export type Database = {
       recurring_rules: {
         Row: {
           active: boolean
+          align_fiscal: boolean
           amount: number
           category_id: string | null
           created_at: string
@@ -356,6 +366,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          align_fiscal?: boolean
           amount: number
           category_id?: string | null
           created_at?: string
@@ -373,6 +384,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          align_fiscal?: boolean
           amount?: number
           category_id?: string | null
           created_at?: string
