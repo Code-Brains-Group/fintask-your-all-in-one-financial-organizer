@@ -69,7 +69,7 @@ export default function Recurring() {
           if (!exists) {
             await supabase.from("pending_recurring").insert({ user_id: user.id, rule_id: r.id, due_date: due.toISOString().slice(0,10) });
           }
-          due = nextDate(due, r.frequency);
+          due = nextDate(due, r.frequency, r.align_fiscal ? { day: fiscal.monthStartDay, month: fiscal.yearStartMonth } : undefined);
           if (r.until_date && due > new Date(r.until_date)) break;
         }
         if (due.toISOString().slice(0,10) !== r.next_due) {
