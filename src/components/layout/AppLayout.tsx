@@ -56,11 +56,12 @@ function Group({ title, icon: Icon, items, defaultOpen }: any) {
 }
 
 export default function AppLayout() {
-  const { user, signOut, focus } = useAuth();
+  const { user, signOut, focus, hasModule } = useAuth();
   const navigate = useNavigate();
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
-  const showFinance = focus !== "tasks";
-  const showTasks = focus !== "finance";
+  const showFinance = hasModule("finance") && focus !== "tasks";
+  const showTasks = hasModule("tasks") && focus !== "finance";
+  const showApplications = hasModule("applications");
 
   return (
     <div className="min-h-screen w-full flex bg-background">
