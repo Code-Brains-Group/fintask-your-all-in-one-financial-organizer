@@ -13,10 +13,10 @@ import * as XLSX from "xlsx";
 const COLORS = ["#0175C2", "#34A853", "#F4A900", "#EA4335", "#7B61FF", "#00B8D9", "#FF6B6B", "#9333EA"];
 
 export default function Reports() {
-  const { user } = useAuth();
+  const { user, fiscal } = useAuth();
   const [tx, setTx] = useState<any[]>([]);
   const [cats, setCats] = useState<any[]>([]);
-  const [filter, setFilter] = useState<{ shortcut: DateShortcut; range: DateRange; custom?: any }>({ shortcut: "month", range: rangeFor("month") });
+  const [filter, setFilter] = useState<{ shortcut: DateShortcut; range: DateRange; custom?: any }>({ shortcut: "month", range: rangeFor("month", undefined, fiscal) });
 
   useEffect(() => {
     if (!user) return;
