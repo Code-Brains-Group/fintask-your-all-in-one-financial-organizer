@@ -264,6 +264,12 @@ function NewRule({ wallets, categories, tasks, onSaved }: any) {
             </Select>
           </div>
           <div><Label>Start date</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
+          {(frequency === "monthly" || frequency === "yearly") && (
+            <label className="flex items-center gap-2 text-sm cursor-pointer p-3 rounded-lg border bg-muted/30">
+              <input type="checkbox" checked={alignFiscal} onChange={(e) => setAlignFiscal(e.target.checked)} />
+              <span>Align to my fiscal period (day {fiscal.monthStartDay}{frequency === "yearly" ? `, month ${fiscal.yearStartMonth}` : ""})</span>
+            </label>
+          )}
           <Button className="w-full" onClick={submit}>Create rule</Button>
         </div>
       </SheetContent>
