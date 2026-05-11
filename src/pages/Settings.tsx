@@ -41,9 +41,22 @@ export default function Settings() {
   const saveProfile = async () => {
     await supabase.from("profiles").update({
       display_name: profile.display_name, currency: profile.currency, feature_focus: profile.feature_focus,
+      fiscal_month_start_day: Math.min(28, Math.max(1, Number(profile.fiscal_month_start_day) || 1)),
+      fiscal_year_start_month: Math.min(12, Math.max(1, Number(profile.fiscal_year_start_month) || 1)),
     }).eq("id", user!.id);
     await refreshFocus();
     toast.success("Profile updated");
+  };
+
+  const saveModules = async () => {
+    const mods = profile.modules?.length ? profile.modules : ["finance","tasks","applications"];
+    await supabase.from("profiles").update({ modules: mods }).eq("id", user!.id);
+    await refreshFocus();
+    toast.success("Modules updated");
+  };
+  const toggleModule = (k: string) => {
+    const cur: string[] = profile.modules || [];
+    setProfile({ ...profile, modules: cur.includes(k) ? cur.filter(x => x !== k) : [...cur, k] });
   };
 
   const saveNotifications = async () => {
