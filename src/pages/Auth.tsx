@@ -24,7 +24,7 @@ export default function Auth() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email, password,
           options: {
             emailRedirectTo: `${window.location.origin}/`,
@@ -32,6 +32,10 @@ export default function Auth() {
           },
         });
         if (error) throw error;
+        // Supabase returns identities: [] for an already-registered email
+        if (signUpData.user && signUpData.user.identities?.length === 0) {
+          throw new Error("An account with this email already exists. Please sign in instead.");
+        }
         toast.success("Check your email to confirm your account");
       } else if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -112,6 +116,7 @@ export default function Auth() {
             </Button>
           </form>
 
+          {/* Google OAuth — temporarily disabled
           {mode !== "forgot" && (
             <>
               <div className="relative">
@@ -125,6 +130,7 @@ export default function Auth() {
               </Button>
             </>
           )}
+          */}
 
           <div className="text-sm text-center text-muted-foreground space-y-1">
             {mode === "login" && (
