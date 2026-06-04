@@ -32,11 +32,18 @@ export default function Auth() {
           },
         });
         if (error) throw error;
-        // Supabase returns identities: [] for an already-registered email
-        if (signUpData.user && signUpData.user.identities?.length === 0) {
-          throw new Error("An account with this email already exists. Please sign in instead.");
+        // Auto-confirm is enabled — user is signed in immediately
+        if (signUpData.session) {
+          toast.success("Account created — welcome!");
+          navigate("/");
+        } else {
+          // Either email already in use, or confirmation required
+          if (signUpData.user && signUpData.user.identities?.length === 0) {
+            throw new Error("An account with this email already exists. Please sign in instead.");
+          }
+          toast.success("Account created — you can sign in now");
+          setMode("login");
         }
-        toast.success("Check your email to confirm your account");
       } else if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
