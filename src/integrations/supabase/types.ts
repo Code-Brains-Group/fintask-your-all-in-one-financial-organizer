@@ -21,6 +21,7 @@ export type Database = {
           contact: string | null
           created_at: string
           deadline: string | null
+          group_id: string | null
           id: string
           kind: string
           link: string | null
@@ -40,6 +41,7 @@ export type Database = {
           contact?: string | null
           created_at?: string
           deadline?: string | null
+          group_id?: string | null
           id?: string
           kind?: string
           link?: string | null
@@ -59,6 +61,7 @@ export type Database = {
           contact?: string | null
           created_at?: string
           deadline?: string | null
+          group_id?: string | null
           id?: string
           kind?: string
           link?: string | null
@@ -72,7 +75,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "applications_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       budget_items: {
         Row: {
@@ -251,6 +262,118 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      group_invites: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          group_id: string
+          id: string
+          max_uses: number | null
+          uses: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          group_id: string
+          id?: string
+          max_uses?: number | null
+          uses?: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          group_id?: string
+          id?: string
+          max_uses?: number | null
+          uses?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_invites_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_members: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          group_id: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          group_id: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          group_id?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          emoji: string | null
+          id: string
+          kind: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          kind?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       pending_recurring: {
         Row: {
@@ -547,12 +670,45 @@ export type Database = {
           },
         ]
       }
+      task_assignees: {
+        Row: {
+          assigned_by: string
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by: string
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           completed_at: string | null
           created_at: string
           description: string | null
           due_date: string | null
+          group_id: string | null
           id: string
           labels: string[]
           linked_transaction_id: string | null
@@ -569,6 +725,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          group_id?: string | null
           id?: string
           labels?: string[]
           linked_transaction_id?: string | null
@@ -585,6 +742,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          group_id?: string | null
           id?: string
           labels?: string[]
           linked_transaction_id?: string | null
@@ -597,6 +755,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_linked_transaction_id_fkey"
             columns: ["linked_transaction_id"]
@@ -717,7 +882,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      accept_group_invite: { Args: { _code: string }; Returns: string }
+      is_group_member: {
+        Args: { _group: string; _user: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
