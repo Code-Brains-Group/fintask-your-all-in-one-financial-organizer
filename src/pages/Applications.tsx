@@ -157,7 +157,7 @@ export default function Applications() {
             </CardContent></Card>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
-              {filtered.map(i => <AppCard key={i.id} item={i} onChange={load} onDelete={() => remove(i.id)} />)}
+              {filtered.map(i => <AppCard key={i.id} item={i} groups={groups} onChange={load} onDelete={() => remove(i.id)} />)}
             </div>
           )}
         </TabsContent>
@@ -166,9 +166,10 @@ export default function Applications() {
   );
 }
 
-function AppCard({ item, onChange, onDelete }: any) {
+function AppCard({ item, groups, onChange, onDelete }: any) {
   const meta = KIND_META[item.kind] || KIND_META.job;
   const Icon = meta.icon;
+  const grp = groups?.find((g: any) => g.id === item.group_id);
   const ev: CalEvent | null = item.deadline ? {
     id: item.id, title: `${item.title} — Deadline`, description: item.notes || "",
     start: new Date(item.deadline + "T09:00:00"), location: item.location, url: item.link,
@@ -195,6 +196,7 @@ function AppCard({ item, onChange, onDelete }: any) {
           {item.applied_date && <span>✓ Applied {fmtDate(item.applied_date)}</span>}
           {item.amount && <span>💰 {fmtKES(item.amount)}</span>}
           {item.reminder_at && <span>⏰ {fmtDate(item.reminder_at)}</span>}
+          {grp && <span>{grp.emoji} {grp.name}</span>}
         </div>
         {item.notes && <div className="text-xs text-foreground/70 line-clamp-2">{item.notes}</div>}
         <div className="flex items-center gap-1 pt-1">
@@ -204,7 +206,7 @@ function AppCard({ item, onChange, onDelete }: any) {
             <Button size="sm" variant="ghost" onClick={downloadOne}><Download className="h-3.5 w-3.5 mr-1" />.ics</Button>
           </>}
           <div className="flex-1" />
-          <AppSheet item={item} onSaved={onChange} trigger={<Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button>} />
+          <AppSheet item={item} groups={groups} onSaved={onChange} trigger={<Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button>} />
           <Button size="icon" variant="ghost" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
         </div>
       </CardContent>
@@ -212,13 +214,13 @@ function AppCard({ item, onChange, onDelete }: any) {
   );
 }
 
-function AppSheet({ item, onSaved, trigger }: { item?: any; onSaved: () => void; trigger?: React.ReactNode }) {
+function AppSheet({ item, groups, onSaved, trigger }: { item?: any; groups?: any[]; onSaved: () => void; trigger?: React.ReactNode }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [f, setF] = useState<any>({});
 
   useEffect(() => {
-    if (open) setF(item ? { ...item } : { kind: "job", status: "saved", title: "" });
+    if (open) setF(item ? { ...item, group_id: item.group_id || "personal" } : { kind: "job", status: "saved", title: "", group_id: "personal" });
   }, [open, item]);
 
   const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
@@ -231,6 +233,7 @@ function AppSheet({ item, onSaved, trigger }: { item?: any; onSaved: () => void;
       link: f.link || null, amount: f.amount ? Number(f.amount) : null,
       location: f.location || null, contact: f.contact || null, notes: f.notes || null,
       reminder_at: f.reminder_at ? new Date(f.reminder_at).toISOString() : null,
+      group_id: f.group_id && f.group_id !== "personal" ? f.group_id : null,
     };
     const res = item
       ? await supabase.from("applications").update(payload).eq("id", item.id)
@@ -265,6 +268,15 @@ function AppSheet({ item, onSaved, trigger }: { item?: any; onSaved: () => void;
           </div>
           <div><Label>Title / Role</Label><Input value={f.title || ""} onChange={(e) => set("title", e.target.value)} placeholder="Software Engineer / MasterCard Foundation" /></div>
           <div><Label>Organization</Label><Input value={f.organization || ""} onChange={(e) => set("organization", e.target.value)} placeholder="e.g. Google, University of Nairobi" /></div>
+          <div><Label>Group / Scope</Label>
+            <Select value={f.group_id || "personal"} onValueChange={(v) => set("group_id", v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="personal">👤 Personal</SelectItem>
+                {(groups || []).map((g: any) => <SelectItem key={g.id} value={g.id}>{g.emoji} {g.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Deadline</Label><Input type="date" value={f.deadline || ""} onChange={(e) => set("deadline", e.target.value)} /></div>
             <div><Label>Applied on</Label><Input type="date" value={f.applied_date || ""} onChange={(e) => set("applied_date", e.target.value)} /></div>
