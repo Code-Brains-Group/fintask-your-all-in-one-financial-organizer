@@ -97,9 +97,17 @@ export default function Applications() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><GraduationCap className="h-6 w-6 text-primary" /> Applications</h1>
           <p className="text-muted-foreground text-sm">Track scholarships and job applications in one place</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap items-center">
+          <Select value={groupFilter} onValueChange={setGroupFilter}>
+            <SelectTrigger className="h-9 w-auto text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All scopes</SelectItem>
+              <SelectItem value="personal">👤 Personal only</SelectItem>
+              {groups.map(g => <SelectItem key={g.id} value={g.id}>{g.emoji} {g.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Button variant="outline" onClick={exportAllICS}><Download className="h-4 w-4 mr-1" /> Export to Calendar</Button>
-          <AppSheet onSaved={load} />
+          <AppSheet onSaved={load} groups={groups} />
         </div>
       </div>
 
