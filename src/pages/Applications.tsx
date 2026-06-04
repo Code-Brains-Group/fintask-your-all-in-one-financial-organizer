@@ -34,17 +34,28 @@ const STATUS_STYLES: Record<string, string> = {
 export default function Applications() {
   const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
   const [tab, setTab] = useState("all");
+  const [groupFilter, setGroupFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase.from("applications").select("*").eq("user_id", user.id).order("deadline", { ascending: true, nullsFirst: false });
-    setItems(data || []); setLoading(false);
+    const [{ data }, { data: g }] = await Promise.all([
+      supabase.from("applications").select("*").order("deadline", { ascending: true, nullsFirst: false }),
+      supabase.from("groups").select("id,name,emoji,kind"),
+    ]);
+    setItems(data || []); setGroups(g || []); setLoading(false);
   };
   useEffect(() => { load(); }, [user]);
 
-  const filtered = useMemo(() => tab === "all" ? items : items.filter(i => i.kind === tab), [items, tab]);
+  const filtered = useMemo(() => items.filter(i => {
+    if (tab !== "all" && i.kind !== tab) return false;
+    if (groupFilter === "personal" && i.group_id) return false;
+    if (groupFilter !== "all" && groupFilter !== "personal" && i.group_id !== groupFilter) return false;
+    return true;
+  }), [items, tab, groupFilter]);
+
 
   const stats = useMemo(() => {
     const s: Record<string, number> = {};
