@@ -546,6 +546,7 @@ export type Database = {
           created_at: string
           date: string
           goal_id: string
+          group_id: string | null
           id: string
           note: string | null
           user_id: string
@@ -556,6 +557,7 @@ export type Database = {
           created_at?: string
           date?: string
           goal_id: string
+          group_id?: string | null
           id?: string
           note?: string | null
           user_id: string
@@ -566,6 +568,7 @@ export type Database = {
           created_at?: string
           date?: string
           goal_id?: string
+          group_id?: string | null
           id?: string
           note?: string | null
           user_id?: string
@@ -593,6 +596,7 @@ export type Database = {
           completed: boolean
           created_at: string
           deadline: string | null
+          group_id: string | null
           icon: string | null
           id: string
           name: string
@@ -605,6 +609,7 @@ export type Database = {
           completed?: boolean
           created_at?: string
           deadline?: string | null
+          group_id?: string | null
           icon?: string | null
           id?: string
           name: string
@@ -617,6 +622,7 @@ export type Database = {
           completed?: boolean
           created_at?: string
           deadline?: string | null
+          group_id?: string | null
           icon?: string | null
           id?: string
           name?: string
@@ -883,6 +889,10 @@ export type Database = {
     }
     Functions: {
       accept_group_invite: { Args: { _code: string }; Returns: string }
+      is_group_admin: {
+        Args: { _group: string; _user: string }
+        Returns: boolean
+      }
       is_group_member: {
         Args: { _group: string; _user: string }
         Returns: boolean
