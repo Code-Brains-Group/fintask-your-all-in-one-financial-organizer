@@ -27,19 +27,22 @@ export default function Savings() {
   const [goals, setGoals] = useState<any[]>([]);
   const [contribs, setContribs] = useState<any[]>([]);
   const [wallets, setWallets] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
 
   const load = async () => {
     if (!user) return;
-    const [g, c, w] = await Promise.all([
-      supabase.from("savings_goals").select("*").eq("user_id", user.id),
-      supabase.from("savings_contributions").select("*").eq("user_id", user.id),
+    const [g, c, w, gr] = await Promise.all([
+      supabase.from("savings_goals").select("*"),
+      supabase.from("savings_contributions").select("*"),
       supabase.from("wallets").select("*").eq("user_id", user.id),
+      supabase.from("groups").select("id,name,emoji"),
     ]);
-    setGoals(g.data || []); setContribs(c.data || []); setWallets(w.data || []);
+    setGoals(g.data || []); setContribs(c.data || []); setWallets(w.data || []); setGroups(gr.data || []);
   };
   useEffect(() => { load(); }, [user]);
 
   const savedFor = (gid: string) => contribs.filter(c => c.goal_id === gid).reduce((a, c) => a + Number(c.amount), 0);
+  const groupOf = (id: string | null) => id ? groups.find(g => g.id === id) : null;
 
   const remove = async (id: string) => {
     if (!confirm("Delete this goal?")) return;
