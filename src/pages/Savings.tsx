@@ -79,9 +79,10 @@ export default function Savings() {
                     <div className="text-xs text-muted-foreground mt-0.5 capitalize">
                       {REPO_TYPES.find(r => r.value === g.repository_type)?.label || "Repository"}
                       {g.deadline && ` · By ${fmtDate(g.deadline)}`}
+                      {groupOf(g.group_id) && ` · 👥 ${groupOf(g.group_id)!.name}`}
                     </div>
                   </div>
-                  <Button size="icon" variant="ghost" onClick={() => remove(g.id)}><Trash2 className="h-4 w-4" /></Button>
+                  {g.user_id === user?.id && <Button size="icon" variant="ghost" onClick={() => remove(g.id)}><Trash2 className="h-4 w-4" /></Button>}
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between text-sm">
