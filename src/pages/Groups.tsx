@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ function randCode(len = 8) {
 
 export default function Groups() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [groups, setGroups] = useState<any[]>([]);
   const [members, setMembers] = useState<Record<string, any[]>>({});
   const [invites, setInvites] = useState<Record<string, any[]>>({});
@@ -115,12 +117,12 @@ export default function Groups() {
             const inv = (invites[g.id] || []).filter((i: any) => i.active);
             return (
               <Card key={g.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-3 cursor-pointer" onClick={() => navigate(`/groups/${g.id}`)}>
                   <div className="flex items-start gap-3">
                     <div className="text-3xl">{g.emoji || "👥"}</div>
                     <div className="flex-1 min-w-0">
-                      <CardTitle className="text-base flex items-center gap-2">{g.name} {isOwner && <Crown className="h-3.5 w-3.5 text-warning" />}</CardTitle>
-                      <div className="text-xs text-muted-foreground">{KIND_LABEL[g.kind] || g.kind} · {ms.length} member{ms.length===1?"":"s"}</div>
+                      <CardTitle className="text-base flex items-center gap-2 hover:text-primary transition-colors">{g.name} {isOwner && <Crown className="h-3.5 w-3.5 text-warning" />}</CardTitle>
+                      <div className="text-xs text-muted-foreground">{KIND_LABEL[g.kind] || g.kind} · {ms.length} member{ms.length===1?"":"s"} · Click to open</div>
                     </div>
                   </div>
                   {g.description && <p className="text-sm text-muted-foreground mt-2">{g.description}</p>}
