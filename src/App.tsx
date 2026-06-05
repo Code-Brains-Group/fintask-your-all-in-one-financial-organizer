@@ -38,6 +38,7 @@ const App = () => (
             <Route path="/join/:code" element={<JoinGroup />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/groups" element={<Groups />} />
+              <Route path="/groups/:id" element={<GroupDetail />} />
               <Route path="/" element={<Index />} />
               <Route path="/finance/transactions" element={<Transactions />} />
               <Route path="/finance/budgets" element={<Budgets />} />
