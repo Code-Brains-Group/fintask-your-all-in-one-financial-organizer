@@ -23,6 +23,7 @@ function randCode(len = 8) {
 
 export default function Groups() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [groups, setGroups] = useState<any[]>([]);
   const [members, setMembers] = useState<Record<string, any[]>>({});
   const [invites, setInvites] = useState<Record<string, any[]>>({});
