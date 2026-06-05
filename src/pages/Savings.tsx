@@ -58,7 +58,7 @@ export default function Savings() {
           <h1 className="text-2xl font-bold">Savings & Repositories</h1>
           <p className="text-muted-foreground text-sm">Track money saved across Banks, MMFs, Chamas etc.</p>
         </div>
-        <NewGoal wallets={wallets} onSaved={load} />
+        <NewGoal wallets={wallets} groups={groups} onSaved={load} />
       </div>
 
       {goals.length === 0 ? (
