@@ -18,6 +18,7 @@ import Recurring from "./pages/Recurring";
 import Reports from "./pages/Reports";
 import Applications from "./pages/Applications";
 import Groups from "./pages/Groups";
+import GroupDetail from "./pages/GroupDetail";
 import JoinGroup from "./pages/JoinGroup";
 import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
