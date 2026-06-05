@@ -27,19 +27,22 @@ export default function Savings() {
   const [goals, setGoals] = useState<any[]>([]);
   const [contribs, setContribs] = useState<any[]>([]);
   const [wallets, setWallets] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
 
   const load = async () => {
     if (!user) return;
-    const [g, c, w] = await Promise.all([
-      supabase.from("savings_goals").select("*").eq("user_id", user.id),
-      supabase.from("savings_contributions").select("*").eq("user_id", user.id),
+    const [g, c, w, gr] = await Promise.all([
+      supabase.from("savings_goals").select("*"),
+      supabase.from("savings_contributions").select("*"),
       supabase.from("wallets").select("*").eq("user_id", user.id),
+      supabase.from("groups").select("id,name,emoji"),
     ]);
-    setGoals(g.data || []); setContribs(c.data || []); setWallets(w.data || []);
+    setGoals(g.data || []); setContribs(c.data || []); setWallets(w.data || []); setGroups(gr.data || []);
   };
   useEffect(() => { load(); }, [user]);
 
   const savedFor = (gid: string) => contribs.filter(c => c.goal_id === gid).reduce((a, c) => a + Number(c.amount), 0);
+  const groupOf = (id: string | null) => id ? groups.find(g => g.id === id) : null;
 
   const remove = async (id: string) => {
     if (!confirm("Delete this goal?")) return;
@@ -55,7 +58,7 @@ export default function Savings() {
           <h1 className="text-2xl font-bold">Savings & Repositories</h1>
           <p className="text-muted-foreground text-sm">Track money saved across Banks, MMFs, Chamas etc.</p>
         </div>
-        <NewGoal wallets={wallets} onSaved={load} />
+        <NewGoal wallets={wallets} groups={groups} onSaved={load} />
       </div>
 
       {goals.length === 0 ? (
@@ -76,9 +79,10 @@ export default function Savings() {
                     <div className="text-xs text-muted-foreground mt-0.5 capitalize">
                       {REPO_TYPES.find(r => r.value === g.repository_type)?.label || "Repository"}
                       {g.deadline && ` · By ${fmtDate(g.deadline)}`}
+                      {groupOf(g.group_id) && ` · 👥 ${groupOf(g.group_id)!.name}`}
                     </div>
                   </div>
-                  <Button size="icon" variant="ghost" onClick={() => remove(g.id)}><Trash2 className="h-4 w-4" /></Button>
+                  {g.user_id === user?.id && <Button size="icon" variant="ghost" onClick={() => remove(g.id)}><Trash2 className="h-4 w-4" /></Button>}
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between text-sm">
@@ -104,6 +108,7 @@ function Contribute({ goal, wallets, onSaved }: any) {
     if (!amount) return;
     await supabase.from("savings_contributions").insert({
       user_id: user!.id, goal_id: goal.id, amount: Number(amount), wallet_id: walletId || null,
+      group_id: goal.group_id || null,
     });
     setAmount(""); onSaved(); toast.success("Contribution added");
   };
@@ -119,18 +124,20 @@ function Contribute({ goal, wallets, onSaved }: any) {
   );
 }
 
-function NewGoal({ wallets, onSaved }: any) {
+function NewGoal({ wallets, groups, onSaved }: any) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(""); const [target, setTarget] = useState("");
   const [icon, setIcon] = useState("🎯"); const [deadline, setDeadline] = useState("");
   const [repoType, setRepoType] = useState("bank");
+  const [groupId, setGroupId] = useState<string>("none");
 
   const submit = async () => {
     if (!name || !target) { toast.error("Fill required fields"); return; }
     const { error } = await supabase.from("savings_goals").insert({
       user_id: user!.id, name, target_amount: Number(target), icon,
       deadline: deadline || null, repository_type: repoType,
+      group_id: groupId === "none" ? null : groupId,
     } as any);
     if (error) { toast.error(error.message); return; }
     setName(""); setTarget(""); setDeadline(""); setOpen(false); onSaved(); toast.success("Goal created");
@@ -153,6 +160,16 @@ function NewGoal({ wallets, onSaved }: any) {
           </div>
           <div><Label>Target amount (KES)</Label><Input type="number" value={target} onChange={(e) => setTarget(e.target.value)} /></div>
           <div><Label>Deadline (optional)</Label><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></div>
+          <div><Label>Share with group (optional)</Label>
+            <Select value={groupId} onValueChange={setGroupId}>
+              <SelectTrigger><SelectValue placeholder="Personal" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">🔒 Personal</SelectItem>
+                {(groups || []).map((g: any) => <SelectItem key={g.id} value={g.id}>{g.emoji || "👥"} {g.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">Group goals appear in the group leaderboard.</p>
+          </div>
           <Button className="w-full" onClick={submit}>Create goal</Button>
         </div>
       </SheetContent>
