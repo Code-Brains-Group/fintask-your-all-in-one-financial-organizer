@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Wallet, ListChecks, Settings, PieChart, Target,
-  Repeat, FileBarChart, KanbanSquare, ListTodo, LogOut, Receipt, ChevronDown, BarChart3, GraduationCap, HelpCircle, Users
+  Repeat, FileBarChart, KanbanSquare, ListTodo, LogOut, Receipt, ChevronDown, BarChart3, GraduationCap, HelpCircle, Users, Shield, Crown
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -56,7 +56,7 @@ function Group({ title, icon: Icon, items, defaultOpen }: any) {
 }
 
 export default function AppLayout() {
-  const { user, signOut, focus, hasModule } = useAuth();
+  const { user, signOut, focus, hasModule, isAdmin, premium } = useAuth();
   const navigate = useNavigate();
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
   const showFinance = hasModule("finance") && focus !== "tasks";
@@ -80,9 +80,13 @@ export default function AppLayout() {
           <SideLink to="/groups" label="Groups" icon={Users} />
           <SideLink to="/help" label="Help & Tour" icon={HelpCircle} />
           <SideLink to="/settings" label="Settings" icon={Settings} />
+          {isAdmin && <SideLink to="/admin" label="Admin Console" icon={Shield} />}
         </nav>
         <div className="border-t pt-3 mt-3 space-y-2">
-          <div className="px-3 text-xs text-muted-foreground truncate">{user?.email}</div>
+          <div className="px-3 text-xs text-muted-foreground truncate flex items-center gap-1">
+            {premium && <Crown className="h-3 w-3 text-warning" />}
+            {user?.email}
+          </div>
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleSignOut}>
             <LogOut className="h-4 w-4 mr-2" /> Sign out
           </Button>

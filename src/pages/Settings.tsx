@@ -30,8 +30,8 @@ export default function Settings() {
       supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
       supabase.from("wallets").select("*").eq("user_id", user.id),
       supabase.from("categories").select("*").eq("user_id", user.id),
-      supabase.from("cost_tiers").select("*").eq("user_id", user.id).order("min_amount"),
-      supabase.from("cost_providers").select("*").eq("user_id", user.id),
+      supabase.from("cost_tiers").select("*").eq("is_global", true).order("min_amount"),
+      supabase.from("cost_providers").select("*").eq("is_global", true),
     ]);
     setProfile(p.data); setWallets(w.data || []); setCategories(c.data || []);
     setTiers(t.data || []); setProviders(pr.data || []);
@@ -228,7 +228,7 @@ export default function Settings() {
         </TabsContent>
 
         <TabsContent value="costs" className="mt-4">
-          <CostManager providers={providers} tiers={tiers} onChange={load} />
+          <ReadOnlyCosts providers={providers} tiers={tiers} />
         </TabsContent>
 
         <TabsContent value="account" className="mt-4">
@@ -352,65 +352,47 @@ function CategoriesManager({ categories, onChange }: any) {
   );
 }
 
-function CostManager({ providers, tiers, onChange }: any) {
-  const { user } = useAuth();
+function ReadOnlyCosts({ providers, tiers }: any) {
   const [providerId, setProviderId] = useState<string | null>(null);
   useEffect(() => { if (providers.length && !providerId) setProviderId(providers[0].id); }, [providers]);
-  const provTiers = tiers.filter((t: any) => t.provider_id === providerId);
   const types = ["withdrawal", "send", "paybill", "buygoods"];
   const [activeType, setActiveType] = useState("withdrawal");
-  const rows = provTiers.filter((t: any) => t.tx_type === activeType);
-  const [min, setMin] = useState(""); const [max, setMax] = useState(""); const [fee, setFee] = useState("");
-
-  const add = async () => {
-    if (!providerId) return;
-    await supabase.from("cost_tiers").insert({
-      user_id: user!.id, provider_id: providerId, tx_type: activeType,
-      min_amount: Number(min), max_amount: Number(max), fee: Number(fee),
-    });
-    setMin(""); setMax(""); setFee(""); onChange();
-  };
-  const remove = async (id: string) => { await supabase.from("cost_tiers").delete().eq("id", id); onChange(); };
+  const rows = tiers.filter((t: any) => t.provider_id === providerId && t.tx_type === activeType);
 
   return (
-    <Card><CardHeader><CardTitle className="text-base">Transaction Cost Manager</CardTitle></CardHeader>
+    <Card><CardHeader><CardTitle className="text-base">Transaction Costs</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        {providers.length > 0 && (
-          <Select value={providerId || ""} onValueChange={setProviderId}>
-            <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
-            <SelectContent>{providers.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.icon} {p.name}</SelectItem>)}</SelectContent>
-          </Select>
+        <p className="text-xs text-muted-foreground">These rates are set by your administrator and apply to everyone.</p>
+        {providers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No cost providers configured yet.</p>
+        ) : (
+          <>
+            <Select value={providerId || ""} onValueChange={setProviderId}>
+              <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+              <SelectContent>{providers.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.icon} {p.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <Tabs value={activeType} onValueChange={setActiveType}>
+              <TabsList>{types.map(t => <TabsTrigger key={t} value={t} className="capitalize">{t}</TabsTrigger>)}</TabsList>
+              <TabsContent value={activeType} className="mt-3">
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50"><tr className="text-left"><th className="px-4 py-2">Min</th><th className="px-4 py-2">Max</th><th className="px-4 py-2">Fee</th></tr></thead>
+                    <tbody>
+                      {rows.map((r: any) => (
+                        <tr key={r.id} className="border-t">
+                          <td className="px-4 py-2">{fmtKES(r.min_amount)}</td>
+                          <td className="px-4 py-2">{fmtKES(r.max_amount)}</td>
+                          <td className="px-4 py-2">{fmtKES(r.fee)}</td>
+                        </tr>
+                      ))}
+                      {rows.length === 0 && <tr><td colSpan={3} className="px-4 py-6 text-center text-muted-foreground text-xs">No tiers</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </>
         )}
-        <Tabs value={activeType} onValueChange={setActiveType}>
-          <TabsList>{types.map(t => <TabsTrigger key={t} value={t} className="capitalize">{t}</TabsTrigger>)}</TabsList>
-          <TabsContent value={activeType} className="mt-3 space-y-2">
-            <div className="overflow-x-auto rounded-lg border">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50">
-                  <tr className="text-left">
-                    <th className="px-4 py-2">Min</th><th className="px-4 py-2">Max</th><th className="px-4 py-2">Fee</th><th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r: any) => (
-                    <tr key={r.id} className="border-t">
-                      <td className="px-4 py-2">{fmtKES(r.min_amount)}</td>
-                      <td className="px-4 py-2">{fmtKES(r.max_amount)}</td>
-                      <td className="px-4 py-2">{fmtKES(r.fee)}</td>
-                      <td className="px-4 py-2 text-right"><Button size="icon" variant="ghost" onClick={() => remove(r.id)}><Trash2 className="h-4 w-4" /></Button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex gap-2">
-              <Input type="number" placeholder="Min" value={min} onChange={(e) => setMin(e.target.value)} />
-              <Input type="number" placeholder="Max" value={max} onChange={(e) => setMax(e.target.value)} />
-              <Input type="number" placeholder="Fee" value={fee} onChange={(e) => setFee(e.target.value)} />
-              <Button onClick={add}><Plus className="h-4 w-4" /></Button>
-            </div>
-          </TabsContent>
-        </Tabs>
       </CardContent>
     </Card>
   );
