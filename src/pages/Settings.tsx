@@ -30,8 +30,8 @@ export default function Settings() {
       supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
       supabase.from("wallets").select("*").eq("user_id", user.id),
       supabase.from("categories").select("*").eq("user_id", user.id),
-      supabase.from("cost_tiers").select("*").eq("user_id", user.id).order("min_amount"),
-      supabase.from("cost_providers").select("*").eq("user_id", user.id),
+      supabase.from("cost_tiers").select("*").eq("is_global", true).order("min_amount"),
+      supabase.from("cost_providers").select("*").eq("is_global", true),
     ]);
     setProfile(p.data); setWallets(w.data || []); setCategories(c.data || []);
     setTiers(t.data || []); setProviders(pr.data || []);
@@ -228,7 +228,7 @@ export default function Settings() {
         </TabsContent>
 
         <TabsContent value="costs" className="mt-4">
-          <CostManager providers={providers} tiers={tiers} onChange={load} />
+          <ReadOnlyCosts providers={providers} tiers={tiers} />
         </TabsContent>
 
         <TabsContent value="account" className="mt-4">
@@ -352,25 +352,12 @@ function CategoriesManager({ categories, onChange }: any) {
   );
 }
 
-function CostManager({ providers, tiers, onChange }: any) {
-  const { user } = useAuth();
+function ReadOnlyCosts({ providers, tiers }: any) {
   const [providerId, setProviderId] = useState<string | null>(null);
   useEffect(() => { if (providers.length && !providerId) setProviderId(providers[0].id); }, [providers]);
-  const provTiers = tiers.filter((t: any) => t.provider_id === providerId);
   const types = ["withdrawal", "send", "paybill", "buygoods"];
   const [activeType, setActiveType] = useState("withdrawal");
-  const rows = provTiers.filter((t: any) => t.tx_type === activeType);
-  const [min, setMin] = useState(""); const [max, setMax] = useState(""); const [fee, setFee] = useState("");
-
-  const add = async () => {
-    if (!providerId) return;
-    await supabase.from("cost_tiers").insert({
-      user_id: user!.id, provider_id: providerId, tx_type: activeType,
-      min_amount: Number(min), max_amount: Number(max), fee: Number(fee),
-    });
-    setMin(""); setMax(""); setFee(""); onChange();
-  };
-  const remove = async (id: string) => { await supabase.from("cost_tiers").delete().eq("id", id); onChange(); };
+  const rows = tiers.filter((t: any) => t.provider_id === providerId && t.tx_type === activeType);
 
   return (
     <Card><CardHeader><CardTitle className="text-base">Transaction Cost Manager</CardTitle></CardHeader>

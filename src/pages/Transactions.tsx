@@ -35,7 +35,7 @@ export default function Transactions() {
       supabase.from("transactions").select("*").eq("user_id", user.id).order("date", { ascending: false }),
       supabase.from("wallets").select("*").eq("user_id", user.id),
       supabase.from("categories").select("*").eq("user_id", user.id),
-      supabase.from("cost_tiers").select("*").eq("user_id", user.id),
+      supabase.from("cost_tiers").select("*").eq("is_global", true),
       supabase.from("tasks").select("id, title").eq("user_id", user.id),
     ]);
     setTxs(tx.data || []); setWallets(w.data || []); setCategories(c.data || []);
