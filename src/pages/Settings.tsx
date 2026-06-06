@@ -360,44 +360,39 @@ function ReadOnlyCosts({ providers, tiers }: any) {
   const rows = tiers.filter((t: any) => t.provider_id === providerId && t.tx_type === activeType);
 
   return (
-    <Card><CardHeader><CardTitle className="text-base">Transaction Cost Manager</CardTitle></CardHeader>
+    <Card><CardHeader><CardTitle className="text-base">Transaction Costs</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        {providers.length > 0 && (
-          <Select value={providerId || ""} onValueChange={setProviderId}>
-            <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
-            <SelectContent>{providers.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.icon} {p.name}</SelectItem>)}</SelectContent>
-          </Select>
+        <p className="text-xs text-muted-foreground">These rates are set by your administrator and apply to everyone.</p>
+        {providers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No cost providers configured yet.</p>
+        ) : (
+          <>
+            <Select value={providerId || ""} onValueChange={setProviderId}>
+              <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+              <SelectContent>{providers.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.icon} {p.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <Tabs value={activeType} onValueChange={setActiveType}>
+              <TabsList>{types.map(t => <TabsTrigger key={t} value={t} className="capitalize">{t}</TabsTrigger>)}</TabsList>
+              <TabsContent value={activeType} className="mt-3">
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50"><tr className="text-left"><th className="px-4 py-2">Min</th><th className="px-4 py-2">Max</th><th className="px-4 py-2">Fee</th></tr></thead>
+                    <tbody>
+                      {rows.map((r: any) => (
+                        <tr key={r.id} className="border-t">
+                          <td className="px-4 py-2">{fmtKES(r.min_amount)}</td>
+                          <td className="px-4 py-2">{fmtKES(r.max_amount)}</td>
+                          <td className="px-4 py-2">{fmtKES(r.fee)}</td>
+                        </tr>
+                      ))}
+                      {rows.length === 0 && <tr><td colSpan={3} className="px-4 py-6 text-center text-muted-foreground text-xs">No tiers</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </>
         )}
-        <Tabs value={activeType} onValueChange={setActiveType}>
-          <TabsList>{types.map(t => <TabsTrigger key={t} value={t} className="capitalize">{t}</TabsTrigger>)}</TabsList>
-          <TabsContent value={activeType} className="mt-3 space-y-2">
-            <div className="overflow-x-auto rounded-lg border">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50">
-                  <tr className="text-left">
-                    <th className="px-4 py-2">Min</th><th className="px-4 py-2">Max</th><th className="px-4 py-2">Fee</th><th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r: any) => (
-                    <tr key={r.id} className="border-t">
-                      <td className="px-4 py-2">{fmtKES(r.min_amount)}</td>
-                      <td className="px-4 py-2">{fmtKES(r.max_amount)}</td>
-                      <td className="px-4 py-2">{fmtKES(r.fee)}</td>
-                      <td className="px-4 py-2 text-right"><Button size="icon" variant="ghost" onClick={() => remove(r.id)}><Trash2 className="h-4 w-4" /></Button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex gap-2">
-              <Input type="number" placeholder="Min" value={min} onChange={(e) => setMin(e.target.value)} />
-              <Input type="number" placeholder="Max" value={max} onChange={(e) => setMax(e.target.value)} />
-              <Input type="number" placeholder="Fee" value={fee} onChange={(e) => setFee(e.target.value)} />
-              <Button onClick={add}><Plus className="h-4 w-4" /></Button>
-            </div>
-          </TabsContent>
-        </Tabs>
       </CardContent>
     </Card>
   );
