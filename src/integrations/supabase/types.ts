@@ -201,24 +201,27 @@ export type Database = {
           icon: string | null
           id: string
           is_active: boolean
+          is_global: boolean
           name: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           icon?: string | null
           id?: string
           is_active?: boolean
+          is_global?: boolean
           name: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           icon?: string | null
           id?: string
           is_active?: boolean
+          is_global?: boolean
           name?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -227,31 +230,34 @@ export type Database = {
           created_at: string
           fee: number
           id: string
+          is_global: boolean
           max_amount: number
           min_amount: number
           provider_id: string
           tx_type: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           fee: number
           id?: string
+          is_global?: boolean
           max_amount: number
           min_amount: number
           provider_id: string
           tx_type: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           fee?: number
           id?: string
+          is_global?: boolean
           max_amount?: number
           min_amount?: number
           provider_id?: string
           tx_type?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -412,6 +418,7 @@ export type Database = {
           fiscal_month_start_day: number
           fiscal_year_start_month: number
           id: string
+          is_active: boolean
           modules: string[]
           notify_applications: boolean
           notify_budgets: boolean
@@ -419,6 +426,7 @@ export type Database = {
           notify_recurring: boolean
           notify_tasks: boolean
           onboarded: boolean
+          premium: boolean
           reminder_lead_minutes: number
           theme: string
           tour_completed: boolean
@@ -433,6 +441,7 @@ export type Database = {
           fiscal_month_start_day?: number
           fiscal_year_start_month?: number
           id: string
+          is_active?: boolean
           modules?: string[]
           notify_applications?: boolean
           notify_budgets?: boolean
@@ -440,6 +449,7 @@ export type Database = {
           notify_recurring?: boolean
           notify_tasks?: boolean
           onboarded?: boolean
+          premium?: boolean
           reminder_lead_minutes?: number
           theme?: string
           tour_completed?: boolean
@@ -454,6 +464,7 @@ export type Database = {
           fiscal_month_start_day?: number
           fiscal_year_start_month?: number
           id?: string
+          is_active?: boolean
           modules?: string[]
           notify_applications?: boolean
           notify_budgets?: boolean
@@ -461,6 +472,7 @@ export type Database = {
           notify_recurring?: boolean
           notify_tasks?: boolean
           onboarded?: boolean
+          premium?: boolean
           reminder_lead_minutes?: number
           theme?: string
           tour_completed?: boolean
@@ -856,6 +868,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       wallets: {
         Row: {
           created_at: string
@@ -889,6 +922,36 @@ export type Database = {
     }
     Functions: {
       accept_group_invite: { Args: { _code: string }; Returns: string }
+      admin_list_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+          is_active: boolean
+          is_admin: boolean
+          modules: string[]
+          premium: boolean
+        }[]
+      }
+      admin_set_user: {
+        Args: {
+          _is_active: boolean
+          _is_admin: boolean
+          _modules: string[]
+          _premium: boolean
+          _target: string
+        }
+        Returns: undefined
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_group_admin: {
         Args: { _group: string; _user: string }
         Returns: boolean
@@ -899,7 +962,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1026,6 +1089,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
