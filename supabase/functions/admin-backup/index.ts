@@ -41,7 +41,10 @@ Deno.serve(async (req) => {
 
     if (type === "schema") {
       const { data, error } = await admin.rpc("admin_dump_schema");
-      if (error) throw error;
+      if (error) {
+        console.error("admin_dump_schema error", error);
+        return new Response(JSON.stringify({ error: error.message, details: error }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       return new Response(String(data || ""), {
         headers: {
           ...corsHeaders,
@@ -50,6 +53,7 @@ Deno.serve(async (req) => {
         },
       });
     }
+
 
     const lines: string[] = [
       `-- FinTask data backup`,
