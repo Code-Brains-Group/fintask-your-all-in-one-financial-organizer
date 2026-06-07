@@ -80,6 +80,7 @@ export default function AppLayout() {
           {showTasks && <Group title="Tasks" icon={ListChecks} items={tasks} defaultOpen={!showFinance} />}
           {showApplications && <SideLink to="/applications" label="Applications" icon={GraduationCap} />}
           <SideLink to="/groups" label="Groups" icon={Users} />
+          <SideLink to="/learning" label="Learning" icon={BookOpen} />
           <SideLink to="/help" label="Help & Tour" icon={HelpCircle} />
           <SideLink to="/settings" label="Settings" icon={Settings} />
           {isAdmin && <SideLink to="/admin" label="Admin Console" icon={Shield} />}
