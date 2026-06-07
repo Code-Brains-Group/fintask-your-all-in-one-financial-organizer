@@ -131,6 +131,7 @@ export default function AppLayout() {
                 ...(showTasks ? tasks : []),
                 ...(showApplications ? [{ to: "/applications", label: "Applications", icon: GraduationCap }] : []),
                 { to: "/groups", label: "Groups", icon: Users },
+                { to: "/learning", label: "Learning", icon: BookOpen },
                 { to: "/help", label: "Help & Tour", icon: HelpCircle },
                 { to: "/settings", label: "Settings", icon: Settings },
                 ...(isAdmin ? [{ to: "/admin", label: "Admin", icon: Shield }] : []),
