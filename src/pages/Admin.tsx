@@ -87,9 +87,15 @@ export default function Admin() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Shield className="h-6 w-6 text-primary"/> Admin Console</h1>
           <p className="text-sm text-muted-foreground">Manage users, costs, features, and backups</p>
         </div>
-        <Button onClick={downloadBackup} disabled={downloading}>
-          <Download className="h-4 w-4 mr-2"/> {downloading ? "Preparing…" : "Download SQL backup"}
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => downloadBackup("schema")} disabled={downloading}>
+            <Download className="h-4 w-4 mr-2"/> Schema
+          </Button>
+          <Button onClick={() => downloadBackup("data")} disabled={downloading}>
+            <Download className="h-4 w-4 mr-2"/> {downloading ? "Preparing…" : "Data backup"}
+          </Button>
+        </div>
+
       </div>
 
       <Tabs defaultValue="users">
