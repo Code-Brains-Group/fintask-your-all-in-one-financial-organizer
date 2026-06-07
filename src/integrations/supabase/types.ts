@@ -381,6 +381,193 @@ export type Database = {
         }
         Relationships: []
       }
+      learning_deliverables: {
+        Row: {
+          created_at: string
+          done: boolean
+          done_at: string | null
+          id: string
+          period_id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          done?: boolean
+          done_at?: string | null
+          id?: string
+          period_id: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          done?: boolean
+          done_at?: string | null
+          id?: string
+          period_id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_deliverables_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "learning_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_paths: {
+        Row: {
+          created_at: string
+          description: string | null
+          emoji: string | null
+          end_date: string | null
+          group_id: string | null
+          id: string
+          start_date: string | null
+          status: string
+          title: string
+          topic: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          end_date?: string | null
+          group_id?: string | null
+          id?: string
+          start_date?: string | null
+          status?: string
+          title: string
+          topic?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          end_date?: string | null
+          group_id?: string | null
+          id?: string
+          start_date?: string | null
+          status?: string
+          title?: string
+          topic?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      learning_periods: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          end_date: string | null
+          focus: string | null
+          id: string
+          path_id: string
+          start_date: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          week_number: number
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          end_date?: string | null
+          focus?: string | null
+          id?: string
+          path_id: string
+          start_date?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          week_number?: number
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          end_date?: string | null
+          focus?: string | null
+          id?: string
+          path_id?: string
+          start_date?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_periods_path_id_fkey"
+            columns: ["path_id"]
+            isOneToOne: false
+            referencedRelation: "learning_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_reflections: {
+        Row: {
+          challenges: string | null
+          created_at: string
+          id: string
+          learned: string | null
+          next_steps: string | null
+          path_id: string
+          period_id: string | null
+          rating: number | null
+          user_id: string
+        }
+        Insert: {
+          challenges?: string | null
+          created_at?: string
+          id?: string
+          learned?: string | null
+          next_steps?: string | null
+          path_id: string
+          period_id?: string | null
+          rating?: number | null
+          user_id: string
+        }
+        Update: {
+          challenges?: string | null
+          created_at?: string
+          id?: string
+          learned?: string | null
+          next_steps?: string | null
+          path_id?: string
+          period_id?: string | null
+          rating?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_reflections_path_id_fkey"
+            columns: ["path_id"]
+            isOneToOne: false
+            referencedRelation: "learning_paths"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_reflections_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "learning_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_recurring: {
         Row: {
           created_at: string

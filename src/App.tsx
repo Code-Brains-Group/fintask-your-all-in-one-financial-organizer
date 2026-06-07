@@ -22,6 +22,8 @@ import GroupDetail from "./pages/GroupDetail";
 import JoinGroup from "./pages/JoinGroup";
 import Help from "./pages/Help";
 import Admin from "./pages/Admin";
+import Learning from "./pages/Learning";
+import LearningDetail from "./pages/LearningDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +52,8 @@ const App = () => (
               <Route path="/tasks/board" element={<Tasks />} />
               <Route path="/tasks/dashboard" element={<Tasks />} />
               <Route path="/applications" element={<Applications />} />
+              <Route path="/learning" element={<Learning />} />
+              <Route path="/learning/:id" element={<LearningDetail />} />
               <Route path="/help" element={<Help />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/admin" element={<Admin />} />
