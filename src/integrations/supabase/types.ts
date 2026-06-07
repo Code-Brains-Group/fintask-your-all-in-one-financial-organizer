@@ -922,6 +922,7 @@ export type Database = {
     }
     Functions: {
       accept_group_invite: { Args: { _code: string }; Returns: string }
+      admin_dump_schema: { Args: never; Returns: string }
       admin_list_users: {
         Args: never
         Returns: {
