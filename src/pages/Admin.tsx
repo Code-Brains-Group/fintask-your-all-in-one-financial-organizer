@@ -56,11 +56,11 @@ export default function Admin() {
     if (error) toast.error(error.message); else { toast.success("Updated"); loadAll(); }
   };
 
-  const downloadBackup = async () => {
+  const downloadBackup = async (kind: "schema" | "data") => {
     setDownloading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`https://yhwmbyjwtnxjnehsprwq.supabase.co/functions/v1/admin-backup`, {
+      const res = await fetch(`https://yhwmbyjwtnxjnehsprwq.supabase.co/functions/v1/admin-backup?type=${kind}`, {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (!res.ok) throw new Error(await res.text());
@@ -68,16 +68,17 @@ export default function Admin() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `fintask-backup-${new Date().toISOString().slice(0,10)}.sql`;
+      a.download = `fintask-${kind}-${new Date().toISOString().slice(0,10)}.sql`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Backup downloaded");
+      toast.success(`${kind === "schema" ? "Schema" : "Backup"} downloaded`);
     } catch (e: any) {
       toast.error(e.message || "Failed");
     } finally {
       setDownloading(false);
     }
   };
+
 
   return (
     <div className="space-y-6">
