@@ -1,10 +1,12 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Wallet, ListChecks, Settings, PieChart, Target,
-  Repeat, FileBarChart, KanbanSquare, ListTodo, LogOut, Receipt, ChevronDown, BarChart3, GraduationCap, HelpCircle, Users, Shield, Crown
+  Repeat, FileBarChart, KanbanSquare, ListTodo, LogOut, Receipt, ChevronDown, BarChart3, GraduationCap, HelpCircle, Users, Shield, Crown, MoreHorizontal
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+
 import { useEffect, useState } from "react";
 import HelpTour from "@/components/HelpTour";
 
@@ -105,7 +107,7 @@ export default function AppLayout() {
           { to: "/", icon: LayoutDashboard, label: "Home", show: true },
           { to: "/finance/transactions", icon: Receipt, label: "Money", show: showFinance },
           { to: "/tasks", icon: ListTodo, label: "Tasks", show: showTasks },
-          { to: "/settings", icon: Settings, label: "Settings", show: true },
+          { to: "/groups", icon: Users, label: "Groups", show: true },
         ].filter(i => i.show).map((i) => (
           <NavLink key={i.to} to={i.to} end className={({ isActive }) =>
             `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-xs ${isActive ? "text-primary" : "text-muted-foreground"}`
@@ -113,6 +115,37 @@ export default function AppLayout() {
             <i.icon className="h-5 w-5" /> {i.label}
           </NavLink>
         ))}
+        <Sheet>
+          <SheetTrigger asChild>
+            <button className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground">
+              <MoreHorizontal className="h-5 w-5" /> More
+            </button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="rounded-t-2xl max-h-[80vh] overflow-y-auto">
+            <SheetHeader><SheetTitle>All sections</SheetTitle></SheetHeader>
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {[
+                { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+                ...(showFinance ? finance : []),
+                ...(showTasks ? tasks : []),
+                ...(showApplications ? [{ to: "/applications", label: "Applications", icon: GraduationCap }] : []),
+                { to: "/groups", label: "Groups", icon: Users },
+                { to: "/help", label: "Help & Tour", icon: HelpCircle },
+                { to: "/settings", label: "Settings", icon: Settings },
+                ...(isAdmin ? [{ to: "/admin", label: "Admin", icon: Shield }] : []),
+              ].map((i: any) => (
+                <NavLink key={i.to} to={i.to} end className={({ isActive }) =>
+                  `flex flex-col items-center gap-1 p-3 rounded-xl border text-xs text-center ${isActive ? "bg-primary-soft text-primary border-primary" : "text-foreground/80 hover:bg-muted"}`
+                }>
+                  <i.icon className="h-5 w-5" /> {i.label}
+                </NavLink>
+              ))}
+            </div>
+            <Button variant="ghost" size="sm" className="w-full justify-start mt-4" onClick={handleSignOut}>
+              <LogOut className="h-4 w-4 mr-2" /> Sign out
+            </Button>
+          </SheetContent>
+        </Sheet>
       </nav>
     </div>
   );

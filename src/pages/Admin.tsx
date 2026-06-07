@@ -56,11 +56,11 @@ export default function Admin() {
     if (error) toast.error(error.message); else { toast.success("Updated"); loadAll(); }
   };
 
-  const downloadBackup = async () => {
+  const downloadBackup = async (kind: "schema" | "data") => {
     setDownloading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`https://yhwmbyjwtnxjnehsprwq.supabase.co/functions/v1/admin-backup`, {
+      const res = await fetch(`https://yhwmbyjwtnxjnehsprwq.supabase.co/functions/v1/admin-backup?type=${kind}`, {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (!res.ok) throw new Error(await res.text());
@@ -68,16 +68,17 @@ export default function Admin() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `fintask-backup-${new Date().toISOString().slice(0,10)}.sql`;
+      a.download = `fintask-${kind}-${new Date().toISOString().slice(0,10)}.sql`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Backup downloaded");
+      toast.success(`${kind === "schema" ? "Schema" : "Backup"} downloaded`);
     } catch (e: any) {
       toast.error(e.message || "Failed");
     } finally {
       setDownloading(false);
     }
   };
+
 
   return (
     <div className="space-y-6">
@@ -86,9 +87,15 @@ export default function Admin() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Shield className="h-6 w-6 text-primary"/> Admin Console</h1>
           <p className="text-sm text-muted-foreground">Manage users, costs, features, and backups</p>
         </div>
-        <Button onClick={downloadBackup} disabled={downloading}>
-          <Download className="h-4 w-4 mr-2"/> {downloading ? "Preparing…" : "Download SQL backup"}
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => downloadBackup("schema")} disabled={downloading}>
+            <Download className="h-4 w-4 mr-2"/> Schema
+          </Button>
+          <Button onClick={() => downloadBackup("data")} disabled={downloading}>
+            <Download className="h-4 w-4 mr-2"/> {downloading ? "Preparing…" : "Data backup"}
+          </Button>
+        </div>
+
       </div>
 
       <Tabs defaultValue="users">
@@ -109,16 +116,28 @@ export default function Admin() {
         <TabsContent value="backup" className="mt-4">
           <Card>
             <CardHeader><CardTitle className="text-base">Database backup</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Downloads a complete <code>.sql</code> dump of every table (users, transactions, tasks, groups, etc.) wrapped in a transaction.
-                Restore by running the file against any Postgres database.
-              </p>
-              <Button onClick={downloadBackup} disabled={downloading}>
-                <Download className="h-4 w-4 mr-2"/> {downloading ? "Preparing…" : "Download SQL backup"}
-              </Button>
+            <CardContent className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium mb-1">Schema</h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Downloads <code>CREATE TABLE</code>, RLS policies, grants, enums, and functions. Run this first against an empty database.
+                </p>
+                <Button variant="outline" onClick={() => downloadBackup("schema")} disabled={downloading}>
+                  <Download className="h-4 w-4 mr-2"/> Download schema
+                </Button>
+              </div>
+              <div className="pt-3 border-t">
+                <h3 className="text-sm font-medium mb-1">Data</h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Downloads <code>INSERT</code> statements for every row, wrapped in a transaction. Apply after the schema dump to fully restore.
+                </p>
+                <Button onClick={() => downloadBackup("data")} disabled={downloading}>
+                  <Download className="h-4 w-4 mr-2"/> {downloading ? "Preparing…" : "Download data backup"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
+
         </TabsContent>
       </Tabs>
     </div>

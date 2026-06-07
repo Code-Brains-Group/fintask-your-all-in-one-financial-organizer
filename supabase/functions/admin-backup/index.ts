@@ -36,10 +36,26 @@ Deno.serve(async (req) => {
     const { data: roleRow } = await admin.from("user_roles").select("id").eq("user_id", u.user.id).eq("role", "admin").maybeSingle();
     if (!roleRow) return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: corsHeaders });
 
+    const type = new URL(req.url).searchParams.get("type") || "data";
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (type === "schema") {
+      const { data, error } = await admin.rpc("admin_dump_schema");
+      if (error) throw error;
+      return new Response(String(data || ""), {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/sql",
+          "Content-Disposition": `attachment; filename="fintask-schema-${today}.sql"`,
+        },
+      });
+    }
+
     const lines: string[] = [
-      `-- FinTask backup`,
+      `-- FinTask data backup`,
       `-- Generated: ${new Date().toISOString()}`,
       `-- By: ${u.user.email}`,
+      `-- Note: run the schema dump first if restoring to an empty database`,
       `BEGIN;`,
       ``,
     ];
@@ -62,7 +78,7 @@ Deno.serve(async (req) => {
       headers: {
         ...corsHeaders,
         "Content-Type": "application/sql",
-        "Content-Disposition": `attachment; filename="fintask-backup-${new Date().toISOString().slice(0,10)}.sql"`,
+        "Content-Disposition": `attachment; filename="fintask-data-${today}.sql"`,
       },
     });
   } catch (e) {
