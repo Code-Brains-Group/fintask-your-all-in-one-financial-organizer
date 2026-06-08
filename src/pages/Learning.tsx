@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Plus, GraduationCap, Users, BookOpen } from "lucide-react";
+import { Plus, GraduationCap, Users, BookOpen, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type Path = {
@@ -19,6 +19,7 @@ type Path = {
   status: string; group_id: string | null; user_id: string;
 };
 type Group = { id: string; name: string; emoji: string | null };
+type WeekDraft = { title: string; focus: string; start_date: string; end_date: string };
 
 export default function Learning() {
   const { user } = useAuth();
@@ -33,6 +34,7 @@ export default function Learning() {
     title: "", topic: "", description: "", emoji: "📚",
     start_date: "", end_date: "", group_id: presetGroup || "personal",
   });
+  const [weeks, setWeeks] = useState<WeekDraft[]>([]);
 
   const load = async () => {
     if (!user) return;
@@ -55,6 +57,10 @@ export default function Learning() {
 
   useEffect(() => { load(); }, [user]);
 
+  const addWeek = () => setWeeks([...weeks, { title: "", focus: "", start_date: "", end_date: "" }]);
+  const updateWeek = (i: number, patch: Partial<WeekDraft>) => setWeeks(weeks.map((w, idx) => idx === i ? { ...w, ...patch } : w));
+  const removeWeek = (i: number) => setWeeks(weeks.filter((_, idx) => idx !== i));
+
   const create = async () => {
     if (!user || !form.title.trim()) return;
     const { data, error } = await supabase.from("learning_paths").insert({
@@ -68,9 +74,23 @@ export default function Learning() {
       group_id: form.group_id === "personal" ? null : form.group_id,
     }).select().single();
     if (error) { toast.error(error.message); return; }
+
+    // Bulk insert weeks if any
+    const validWeeks = weeks.filter(w => w.title.trim());
+    if (validWeeks.length) {
+      const rows = validWeeks.map((w, i) => ({
+        path_id: data!.id, user_id: user.id, week_number: i + 1,
+        title: w.title.trim(), focus: w.focus || null,
+        start_date: w.start_date || null, end_date: w.end_date || null,
+      }));
+      const { error: pe } = await supabase.from("learning_periods").insert(rows);
+      if (pe) toast.error("Weeks: " + pe.message);
+    }
+
     toast.success("Learning path created");
     setOpen(false);
     setForm({ title: "", topic: "", description: "", emoji: "📚", start_date: "", end_date: "", group_id: "personal" });
+    setWeeks([]);
     navigate(`/learning/${data!.id}`);
   };
 
@@ -83,7 +103,7 @@ export default function Learning() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> New Path</Button></DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>New learning path</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div className="flex gap-2">
@@ -106,7 +126,32 @@ export default function Learning() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={create} className="w-full">Create path</Button>
+
+              <div className="border-t pt-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium">Weekly plan</div>
+                    <div className="text-xs text-muted-foreground">Sketch the weeks now (you can add more later).</div>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={addWeek}><Plus className="h-3 w-3 mr-1" /> Add week</Button>
+                </div>
+                {weeks.map((w, i) => (
+                  <div key={i} className="rounded border p-2 space-y-2 bg-muted/30">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">Week {i + 1}</Badge>
+                      <Input className="flex-1" value={w.title} onChange={e => updateWeek(i, { title: e.target.value })} placeholder="Week title (e.g. Explore Android ecosystem)" />
+                      <Button size="icon" variant="ghost" onClick={() => removeWeek(i)}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                    <Input value={w.focus} onChange={e => updateWeek(i, { focus: e.target.value })} placeholder="Focus / outcome" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input type="date" value={w.start_date} onChange={e => updateWeek(i, { start_date: e.target.value })} />
+                      <Input type="date" value={w.end_date} onChange={e => updateWeek(i, { end_date: e.target.value })} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Button onClick={create} className="w-full">Create path{weeks.filter(w => w.title.trim()).length ? ` + ${weeks.filter(w => w.title.trim()).length} weeks` : ""}</Button>
             </div>
           </DialogContent>
         </Dialog>
