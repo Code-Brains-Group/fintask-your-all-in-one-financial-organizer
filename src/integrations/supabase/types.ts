@@ -388,6 +388,7 @@ export type Database = {
           done_at: string | null
           id: string
           period_id: string
+          task_id: string | null
           title: string
           user_id: string
         }
@@ -397,6 +398,7 @@ export type Database = {
           done_at?: string | null
           id?: string
           period_id: string
+          task_id?: string | null
           title: string
           user_id: string
         }
@@ -406,6 +408,7 @@ export type Database = {
           done_at?: string | null
           id?: string
           period_id?: string
+          task_id?: string | null
           title?: string
           user_id?: string
         }
@@ -521,6 +524,7 @@ export type Database = {
         Row: {
           challenges: string | null
           created_at: string
+          deliverable_id: string | null
           id: string
           learned: string | null
           next_steps: string | null
@@ -532,6 +536,7 @@ export type Database = {
         Insert: {
           challenges?: string | null
           created_at?: string
+          deliverable_id?: string | null
           id?: string
           learned?: string | null
           next_steps?: string | null
@@ -543,6 +548,7 @@ export type Database = {
         Update: {
           challenges?: string | null
           created_at?: string
+          deliverable_id?: string | null
           id?: string
           learned?: string | null
           next_steps?: string | null
