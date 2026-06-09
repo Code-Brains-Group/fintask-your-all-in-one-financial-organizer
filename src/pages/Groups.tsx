@@ -131,7 +131,7 @@ export default function Groups() {
                   <div className="flex flex-wrap gap-1.5">
                     {ms.map((m: any) => (
                       <Badge key={m.id} variant="outline" className="text-xs">
-                        {m.user_id === user?.id ? "You" : (m.display_name || m.user_id.slice(0,6))} {m.role === "owner" && "👑"}
+                        {m.user_id === user?.id ? "You" : (m.display_name || "Member")} {m.role === "owner" && "👑"}
                       </Badge>
                     ))}
                   </div>
