@@ -62,8 +62,50 @@ export default function Learning() {
   const updateWeek = (i: number, patch: Partial<WeekDraft>) => setWeeks(weeks.map((w, idx) => idx === i ? { ...w, ...patch } : w));
   const removeWeek = (i: number) => setWeeks(weeks.filter((_, idx) => idx !== i));
 
-  const create = async () => {
+  const openEdit = (p: Path) => {
+    setEditing(p);
+    setForm({
+      title: p.title, topic: p.topic || "", description: p.description || "",
+      emoji: p.emoji || "📚", start_date: p.start_date || "", end_date: p.end_date || "",
+      group_id: p.group_id || "personal",
+    });
+    setWeeks([]);
+    setOpen(true);
+  };
+  const resetForm = () => {
+    setEditing(null);
+    setForm({ title: "", topic: "", description: "", emoji: "📚", start_date: "", end_date: "", group_id: presetGroup || "personal" });
+    setWeeks([]);
+  };
+
+  const removePath = async (p: Path, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Delete "${p.title}"? This removes all weeks, deliverables and reflections.`)) return;
+    const { error } = await supabase.from("learning_paths").delete().eq("id", p.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Path deleted");
+    load();
+  };
+
+  const save = async () => {
     if (!user || !form.title.trim()) return;
+
+    if (editing) {
+      const { error } = await supabase.from("learning_paths").update({
+        title: form.title.trim(),
+        topic: form.topic || null,
+        description: form.description || null,
+        emoji: form.emoji || "📚",
+        start_date: form.start_date || null,
+        end_date: form.end_date || null,
+        group_id: form.group_id === "personal" ? null : form.group_id,
+      }).eq("id", editing.id);
+      if (error) { toast.error(error.message); return; }
+      toast.success("Path updated");
+      setOpen(false); resetForm(); load();
+      return;
+    }
+
     const { data, error } = await supabase.from("learning_paths").insert({
       user_id: user.id,
       title: form.title.trim(),
@@ -76,7 +118,6 @@ export default function Learning() {
     }).select().single();
     if (error) { toast.error(error.message); return; }
 
-    // Bulk insert weeks if any
     const validWeeks = weeks.filter(w => w.title.trim());
     if (validWeeks.length) {
       const rows = validWeeks.map((w, i) => ({
@@ -89,9 +130,7 @@ export default function Learning() {
     }
 
     toast.success("Learning path created");
-    setOpen(false);
-    setForm({ title: "", topic: "", description: "", emoji: "📚", start_date: "", end_date: "", group_id: "personal" });
-    setWeeks([]);
+    setOpen(false); resetForm();
     navigate(`/learning/${data!.id}`);
   };
 
