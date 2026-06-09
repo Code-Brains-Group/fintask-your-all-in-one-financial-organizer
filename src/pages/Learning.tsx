@@ -167,31 +167,35 @@ export default function Learning() {
                 </Select>
               </div>
 
-              <div className="border-t pt-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium">Weekly plan</div>
-                    <div className="text-xs text-muted-foreground">Sketch the weeks now (you can add more later).</div>
+              {!editing && (
+                <div className="border-t pt-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium">Weekly plan</div>
+                      <div className="text-xs text-muted-foreground">Sketch the weeks now (you can add more later).</div>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={addWeek}><Plus className="h-3 w-3 mr-1" /> Add week</Button>
                   </div>
-                  <Button size="sm" variant="outline" onClick={addWeek}><Plus className="h-3 w-3 mr-1" /> Add week</Button>
+                  {weeks.map((w, i) => (
+                    <div key={i} className="rounded border p-2 space-y-2 bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">Week {i + 1}</Badge>
+                        <Input className="flex-1" value={w.title} onChange={e => updateWeek(i, { title: e.target.value })} placeholder="Week title (e.g. Explore Android ecosystem)" />
+                        <Button size="icon" variant="ghost" onClick={() => removeWeek(i)}><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                      <Input value={w.focus} onChange={e => updateWeek(i, { focus: e.target.value })} placeholder="Focus / outcome" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input type="date" value={w.start_date} onChange={e => updateWeek(i, { start_date: e.target.value })} />
+                        <Input type="date" value={w.end_date} onChange={e => updateWeek(i, { end_date: e.target.value })} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                {weeks.map((w, i) => (
-                  <div key={i} className="rounded border p-2 space-y-2 bg-muted/30">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">Week {i + 1}</Badge>
-                      <Input className="flex-1" value={w.title} onChange={e => updateWeek(i, { title: e.target.value })} placeholder="Week title (e.g. Explore Android ecosystem)" />
-                      <Button size="icon" variant="ghost" onClick={() => removeWeek(i)}><Trash2 className="h-4 w-4" /></Button>
-                    </div>
-                    <Input value={w.focus} onChange={e => updateWeek(i, { focus: e.target.value })} placeholder="Focus / outcome" />
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input type="date" value={w.start_date} onChange={e => updateWeek(i, { start_date: e.target.value })} />
-                      <Input type="date" value={w.end_date} onChange={e => updateWeek(i, { end_date: e.target.value })} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              )}
 
-              <Button onClick={create} className="w-full">Create path{weeks.filter(w => w.title.trim()).length ? ` + ${weeks.filter(w => w.title.trim()).length} weeks` : ""}</Button>
+              <Button onClick={save} className="w-full">
+                {editing ? "Save changes" : `Create path${weeks.filter(w => w.title.trim()).length ? ` + ${weeks.filter(w => w.title.trim()).length} weeks` : ""}`}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
