@@ -42,7 +42,41 @@ export default function LearningDetail() {
 
   const [delTitle, setDelTitle] = useState<Record<string, string>>({});
 
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ title: "", topic: "", description: "", emoji: "📚", start_date: "", end_date: "" });
+
   const isOwner = user && path && user.id === path.user_id;
+
+  const openEditPath = () => {
+    if (!path) return;
+    setEditForm({
+      title: path.title, topic: path.topic || "", description: path.description || "",
+      emoji: path.emoji || "📚", start_date: path.start_date || "", end_date: path.end_date || "",
+    });
+    setEditOpen(true);
+  };
+  const savePathEdit = async () => {
+    if (!path || !editForm.title.trim()) return;
+    const { error } = await supabase.from("learning_paths").update({
+      title: editForm.title.trim(),
+      topic: editForm.topic || null,
+      description: editForm.description || null,
+      emoji: editForm.emoji || "📚",
+      start_date: editForm.start_date || null,
+      end_date: editForm.end_date || null,
+    }).eq("id", path.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Path updated");
+    setEditOpen(false); load();
+  };
+  const deletePath = async () => {
+    if (!path) return;
+    if (!confirm(`Delete "${path.title}"? This removes all weeks, deliverables and reflections.`)) return;
+    const { error } = await supabase.from("learning_paths").delete().eq("id", path.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Path deleted");
+    navigate("/learning");
+  };
 
   const load = async () => {
     if (!id) return;
