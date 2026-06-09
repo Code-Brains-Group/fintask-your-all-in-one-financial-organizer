@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Wallet, ListChecks, Settings, PieChart, Target,
-  Repeat, FileBarChart, KanbanSquare, ListTodo, LogOut, Receipt, ChevronDown, BarChart3, GraduationCap, HelpCircle, Users, Shield, Crown, MoreHorizontal, BookOpen
+  Repeat, FileBarChart, KanbanSquare, ListTodo, LogOut, Receipt, ChevronDown, BarChart3, GraduationCap, HelpCircle, Users, Shield, Crown, MoreHorizontal, BookOpen, Sparkles
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ const finance = [
   { to: "/finance/savings", label: "Savings", icon: Target },
   { to: "/finance/recurring", label: "Recurring", icon: Repeat },
   { to: "/finance/reports", label: "Reports", icon: FileBarChart },
+  { to: "/finance/insights", label: "Insights", icon: Sparkles },
 ];
 const tasks = [
   { to: "/tasks", label: "Task List", icon: ListTodo },
