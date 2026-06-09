@@ -16,6 +16,7 @@ const finance = [
   { to: "/finance/savings", label: "Savings", icon: Target },
   { to: "/finance/recurring", label: "Recurring", icon: Repeat },
   { to: "/finance/reports", label: "Reports", icon: FileBarChart },
+  { to: "/finance/insights", label: "Insights", icon: Sparkles },
 ];
 const tasks = [
   { to: "/tasks", label: "Task List", icon: ListTodo },
