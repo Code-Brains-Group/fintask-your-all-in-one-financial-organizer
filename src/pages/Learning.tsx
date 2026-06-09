@@ -141,10 +141,10 @@ export default function Learning() {
           <h1 className="text-3xl font-bold flex items-center gap-2"><GraduationCap className="h-7 w-7 text-primary" /> Learning</h1>
           <p className="text-muted-foreground">Plan what to learn, track weekly progress, and reflect on what you took away.</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> New Path</Button></DialogTrigger>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
+          <DialogTrigger asChild><Button onClick={() => resetForm()}><Plus className="h-4 w-4 mr-2" /> New Path</Button></DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>New learning path</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editing ? "Edit learning path" : "New learning path"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div className="flex gap-2">
                 <Input className="w-20" value={form.emoji} onChange={e => setForm({ ...form, emoji: e.target.value })} placeholder="📚" />
