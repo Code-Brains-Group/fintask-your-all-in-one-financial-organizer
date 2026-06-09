@@ -30,6 +30,7 @@ export default function Learning() {
   const [progress, setProgress] = useState<Record<string, { done: number; total: number }>>({});
   const [groups, setGroups] = useState<Group[]>([]);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Path | null>(null);
   const [form, setForm] = useState({
     title: "", topic: "", description: "", emoji: "📚",
     start_date: "", end_date: "", group_id: presetGroup || "personal",
