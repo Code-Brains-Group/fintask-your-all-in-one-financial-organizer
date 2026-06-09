@@ -115,7 +115,7 @@ export default function GroupDetail() {
   function memberName(uid: string) {
     if (uid === user?.id) return "You";
     const m = members.find(x => x.user_id === uid);
-    return m?.display_name || uid.slice(0, 6);
+    return m?.display_name || "Member";
   }
 
   const copyInvite = (code: string) => {
@@ -412,7 +412,7 @@ export default function GroupDetail() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-medium flex items-center gap-1 truncate">
-                          {isMe ? "You" : (m.display_name || m.user_id.slice(0,8))}
+                          {isMe ? "You" : (m.display_name || "Member")}
                           {m.role === "owner" && <Crown className="h-3.5 w-3.5 text-warning" />}
                           {m.role === "admin" && <ShieldCheck className="h-3.5 w-3.5 text-primary" />}
                         </div>
@@ -449,7 +449,7 @@ export default function GroupDetail() {
 function MemberDrawer({ open, onClose, userId, members, tasks, apps, goals, contribs, subtasks, me }: any) {
   if (!userId) return null;
   const m = members.find((x: any) => x.user_id === userId);
-  const name = userId === me ? "You" : (m?.display_name || userId.slice(0, 8));
+  const name = userId === me ? "You" : (m?.display_name || "Member");
   const userTasks = tasks.filter((t: any) => t.user_id === userId);
   const userApps = apps.filter((a: any) => a.user_id === userId);
   const userContribs = contribs.filter((c: any) => c.user_id === userId);
