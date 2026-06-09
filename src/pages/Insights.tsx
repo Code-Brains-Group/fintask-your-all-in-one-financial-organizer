@@ -243,20 +243,30 @@ export default function Insights() {
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4 text-danger" /> Where you spend most</CardTitle></CardHeader>
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4 text-danger" /> Where you spend most</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {data.topCats.length === 0 ? <p className="text-sm text-muted-foreground">No expenses yet.</p> :
-              data.topCats.map(([id, total]) => {
+              data.topCats.map(([id, total], i) => {
                 const c = catOf(id);
                 const max = data.topCats[0][1];
+                const pct = (total / max) * 100;
                 return (
-                  <div key={id} className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span>{c?.icon || "💸"} {c?.name || "Uncategorized"}</span>
-                      <span className="font-medium">{fmtKES(total)}</span>
+                  <div key={id} className="space-y-1.5">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="flex items-center gap-2">
+                        <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold ${i === 0 ? "bg-danger text-danger-foreground" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
+                        <span className="text-lg">{c?.icon || "💸"}</span>
+                        <span className="font-medium">{c?.name || "Uncategorized"}</span>
+                      </span>
+                      <span className="font-semibold tabular-nums">{fmtKES(total)}</span>
                     </div>
-                    <Progress value={(total / max) * 100} className="h-2" />
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-danger/70 to-danger transition-all duration-700"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
                   </div>
                 );
               })
@@ -265,37 +275,56 @@ export default function Insights() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><TrendingDown className="h-4 w-4 text-success" /> Where you spend least</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><TrendingDown className="h-4 w-4 text-success" /> Where you spend least</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {data.leastCats.length === 0 ? <p className="text-sm text-muted-foreground">No data.</p> :
               data.leastCats.map(([id, total]) => {
                 const c = catOf(id);
                 return (
-                  <div key={id} className="flex justify-between text-sm border-b last:border-0 pb-2">
-                    <span>{c?.icon || "💸"} {c?.name || "Uncategorized"}</span>
-                    <span className="text-muted-foreground">{fmtKES(total)}</span>
+                  <div key={id} className="flex items-center justify-between text-sm border-b last:border-0 py-2">
+                    <span className="flex items-center gap-2">
+                      <span className="text-lg">{c?.icon || "💸"}</span>
+                      <span>{c?.name || "Uncategorized"}</span>
+                    </span>
+                    <span className="text-muted-foreground tabular-nums">{fmtKES(total)}</span>
                   </div>
                 );
               })
             }
-            <div className="pt-2 text-xs text-muted-foreground">
-              Heaviest spending day: <Badge variant="outline">{data.dowMax}</Badge> · {fmtKES(data.dowSpend)} total
+            <div className="pt-3 mt-2 border-t flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">Heaviest day:</span>
+              <Badge className="bg-warning-soft text-warning border-warning/30">{data.dowMax}</Badge>
+              <span className="font-semibold tabular-nums ml-auto">{fmtKES(data.dowSpend)}</span>
             </div>
           </CardContent>
         </Card>
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Income vs Spend — last 6 months</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Income vs Spend — last 6 months</CardTitle></CardHeader>
         <CardContent className="h-72">
           <ResponsiveContainer>
-            <BarChart data={data.trendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="month" fontSize={11} /><YAxis fontSize={11} />
-              <Tooltip formatter={(v: any) => fmtKES(v as number)} />
-              <Legend />
-              <Bar dataKey="Income" fill="hsl(var(--success))" />
-              <Bar dataKey="Spend" fill="hsl(var(--danger))" />
+            <BarChart data={data.trendData} barGap={4}>
+              <defs>
+                <linearGradient id="gradIncome" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={1} />
+                  <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.6} />
+                </linearGradient>
+                <linearGradient id="gradSpend" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(var(--danger))" stopOpacity={1} />
+                  <stop offset="100%" stopColor="hsl(var(--danger))" stopOpacity={0.6} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="month" fontSize={11} axisLine={false} tickLine={false} />
+              <YAxis fontSize={11} axisLine={false} tickLine={false} />
+              <Tooltip
+                formatter={(v: any) => fmtKES(v as number)}
+                contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+              />
+              <Legend iconType="circle" />
+              <Bar dataKey="Income" fill="url(#gradIncome)" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="Spend" fill="url(#gradSpend)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
