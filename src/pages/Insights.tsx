@@ -176,51 +176,97 @@ export default function Insights() {
 
   const next = nextMonthKey();
 
+  const surplus = data.incomeAvg - data.totalPredicted;
+  const surplusPct = data.incomeAvg > 0 ? Math.max(-100, Math.min(100, Math.round((surplus / data.incomeAvg) * 100))) : 0;
+  const ringPct = Math.max(0, Math.min(100, surplusPct));
+  const ringCircum = 2 * Math.PI * 42;
+  const ringOffset = ringCircum - (ringCircum * ringPct) / 100;
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2"><Sparkles className="h-6 w-6 text-primary" /> Spending Insights</h1>
-        <p className="text-muted-foreground text-sm">Patterns from your history and a forecast for next month.</p>
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <span className="relative">
+              <Sparkles className="h-7 w-7 text-primary" />
+              <span className="absolute inset-0 blur-md bg-primary/40 rounded-full -z-10" />
+            </span>
+            Spending Insights
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">Patterns from your history and a forecast for next month.</p>
+        </div>
+        <Badge variant="outline" className="text-xs"><Calendar className="h-3 w-3 mr-1" /> Forecast for {monthLabel(next)}</Badge>
       </div>
 
-      {/* Forecast banner */}
-      <Card className="border-primary/30 bg-primary-soft/30">
-        <CardContent className="p-5 grid gap-4 md:grid-cols-3">
-          <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> Forecast — {monthLabel(next)}</div>
-            <div className="text-3xl font-bold mt-1">{fmtKES(data.totalPredicted)}</div>
-            <div className="text-xs text-muted-foreground">Predicted spend (incl. fees)</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">Avg income (3mo)</div>
-            <div className="text-3xl font-bold mt-1 text-success">{fmtKES(data.incomeAvg)}</div>
-            <div className="text-xs text-muted-foreground">Baseline to compare against</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">Potential surplus</div>
-            <div className={`text-3xl font-bold mt-1 ${data.incomeAvg - data.totalPredicted >= 0 ? "text-success" : "text-danger"}`}>
-              {fmtKES(data.incomeAvg - data.totalPredicted)}
+      {/* Hero forecast */}
+      <Card className="overflow-hidden border-0 shadow-lg relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-primary/5 to-success/10 pointer-events-none" />
+        <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
+        <CardContent className="p-6 grid gap-6 md:grid-cols-[1fr_auto] items-center relative">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Predicted spend</div>
+              <div className="text-3xl font-bold mt-1 tabular-nums">{fmtKES(data.totalPredicted)}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">incl. fees</div>
             </div>
-            <div className="text-xs text-muted-foreground">If patterns hold</div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Avg income</div>
+              <div className="text-3xl font-bold mt-1 text-success tabular-nums">{fmtKES(data.incomeAvg)}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">3-month baseline</div>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Potential surplus</div>
+              <div className={`text-3xl font-bold mt-1 tabular-nums ${surplus >= 0 ? "text-success" : "text-danger"}`}>
+                {surplus >= 0 ? "+" : ""}{fmtKES(surplus)}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">if patterns hold</div>
+            </div>
+          </div>
+          <div className="relative flex items-center justify-center">
+            <svg width="110" height="110" viewBox="0 0 100 100" className="-rotate-90">
+              <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
+              <circle
+                cx="50" cy="50" r="42" fill="none"
+                stroke={surplus >= 0 ? "hsl(var(--success))" : "hsl(var(--danger))"}
+                strokeWidth="8" strokeLinecap="round"
+                strokeDasharray={ringCircum}
+                strokeDashoffset={ringOffset}
+                style={{ transition: "stroke-dashoffset 800ms cubic-bezier(.4,0,.2,1)" }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className={`text-xl font-bold ${surplus >= 0 ? "text-success" : "text-danger"}`}>{surplusPct >= 0 ? "+" : ""}{surplusPct}%</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">save rate</div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4 text-danger" /> Where you spend most</CardTitle></CardHeader>
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4 text-danger" /> Where you spend most</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {data.topCats.length === 0 ? <p className="text-sm text-muted-foreground">No expenses yet.</p> :
-              data.topCats.map(([id, total]) => {
+              data.topCats.map(([id, total], i) => {
                 const c = catOf(id);
                 const max = data.topCats[0][1];
+                const pct = (total / max) * 100;
                 return (
-                  <div key={id} className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span>{c?.icon || "💸"} {c?.name || "Uncategorized"}</span>
-                      <span className="font-medium">{fmtKES(total)}</span>
+                  <div key={id} className="space-y-1.5">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="flex items-center gap-2">
+                        <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold ${i === 0 ? "bg-danger text-danger-foreground" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
+                        <span className="text-lg">{c?.icon || "💸"}</span>
+                        <span className="font-medium">{c?.name || "Uncategorized"}</span>
+                      </span>
+                      <span className="font-semibold tabular-nums">{fmtKES(total)}</span>
                     </div>
-                    <Progress value={(total / max) * 100} className="h-2" />
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-danger/70 to-danger transition-all duration-700"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
                   </div>
                 );
               })
@@ -229,37 +275,56 @@ export default function Insights() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><TrendingDown className="h-4 w-4 text-success" /> Where you spend least</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><TrendingDown className="h-4 w-4 text-success" /> Where you spend least</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {data.leastCats.length === 0 ? <p className="text-sm text-muted-foreground">No data.</p> :
               data.leastCats.map(([id, total]) => {
                 const c = catOf(id);
                 return (
-                  <div key={id} className="flex justify-between text-sm border-b last:border-0 pb-2">
-                    <span>{c?.icon || "💸"} {c?.name || "Uncategorized"}</span>
-                    <span className="text-muted-foreground">{fmtKES(total)}</span>
+                  <div key={id} className="flex items-center justify-between text-sm border-b last:border-0 py-2">
+                    <span className="flex items-center gap-2">
+                      <span className="text-lg">{c?.icon || "💸"}</span>
+                      <span>{c?.name || "Uncategorized"}</span>
+                    </span>
+                    <span className="text-muted-foreground tabular-nums">{fmtKES(total)}</span>
                   </div>
                 );
               })
             }
-            <div className="pt-2 text-xs text-muted-foreground">
-              Heaviest spending day: <Badge variant="outline">{data.dowMax}</Badge> · {fmtKES(data.dowSpend)} total
+            <div className="pt-3 mt-2 border-t flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">Heaviest day:</span>
+              <Badge className="bg-warning-soft text-warning border-warning/30">{data.dowMax}</Badge>
+              <span className="font-semibold tabular-nums ml-auto">{fmtKES(data.dowSpend)}</span>
             </div>
           </CardContent>
         </Card>
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Income vs Spend — last 6 months</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Income vs Spend — last 6 months</CardTitle></CardHeader>
         <CardContent className="h-72">
           <ResponsiveContainer>
-            <BarChart data={data.trendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="month" fontSize={11} /><YAxis fontSize={11} />
-              <Tooltip formatter={(v: any) => fmtKES(v as number)} />
-              <Legend />
-              <Bar dataKey="Income" fill="hsl(var(--success))" />
-              <Bar dataKey="Spend" fill="hsl(var(--danger))" />
+            <BarChart data={data.trendData} barGap={4}>
+              <defs>
+                <linearGradient id="gradIncome" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={1} />
+                  <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.6} />
+                </linearGradient>
+                <linearGradient id="gradSpend" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(var(--danger))" stopOpacity={1} />
+                  <stop offset="100%" stopColor="hsl(var(--danger))" stopOpacity={0.6} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="month" fontSize={11} axisLine={false} tickLine={false} />
+              <YAxis fontSize={11} axisLine={false} tickLine={false} />
+              <Tooltip
+                formatter={(v: any) => fmtKES(v as number)}
+                contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+              />
+              <Legend iconType="circle" />
+              <Bar dataKey="Income" fill="url(#gradIncome)" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="Spend" fill="url(#gradSpend)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

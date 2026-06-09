@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Plus, GraduationCap, Users, BookOpen, Trash2 } from "lucide-react";
+import { Plus, GraduationCap, Users, BookOpen, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 type Path = {
@@ -30,6 +30,7 @@ export default function Learning() {
   const [progress, setProgress] = useState<Record<string, { done: number; total: number }>>({});
   const [groups, setGroups] = useState<Group[]>([]);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Path | null>(null);
   const [form, setForm] = useState({
     title: "", topic: "", description: "", emoji: "📚",
     start_date: "", end_date: "", group_id: presetGroup || "personal",
@@ -61,8 +62,50 @@ export default function Learning() {
   const updateWeek = (i: number, patch: Partial<WeekDraft>) => setWeeks(weeks.map((w, idx) => idx === i ? { ...w, ...patch } : w));
   const removeWeek = (i: number) => setWeeks(weeks.filter((_, idx) => idx !== i));
 
-  const create = async () => {
+  const openEdit = (p: Path) => {
+    setEditing(p);
+    setForm({
+      title: p.title, topic: p.topic || "", description: p.description || "",
+      emoji: p.emoji || "📚", start_date: p.start_date || "", end_date: p.end_date || "",
+      group_id: p.group_id || "personal",
+    });
+    setWeeks([]);
+    setOpen(true);
+  };
+  const resetForm = () => {
+    setEditing(null);
+    setForm({ title: "", topic: "", description: "", emoji: "📚", start_date: "", end_date: "", group_id: presetGroup || "personal" });
+    setWeeks([]);
+  };
+
+  const removePath = async (p: Path, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Delete "${p.title}"? This removes all weeks, deliverables and reflections.`)) return;
+    const { error } = await supabase.from("learning_paths").delete().eq("id", p.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Path deleted");
+    load();
+  };
+
+  const save = async () => {
     if (!user || !form.title.trim()) return;
+
+    if (editing) {
+      const { error } = await supabase.from("learning_paths").update({
+        title: form.title.trim(),
+        topic: form.topic || null,
+        description: form.description || null,
+        emoji: form.emoji || "📚",
+        start_date: form.start_date || null,
+        end_date: form.end_date || null,
+        group_id: form.group_id === "personal" ? null : form.group_id,
+      }).eq("id", editing.id);
+      if (error) { toast.error(error.message); return; }
+      toast.success("Path updated");
+      setOpen(false); resetForm(); load();
+      return;
+    }
+
     const { data, error } = await supabase.from("learning_paths").insert({
       user_id: user.id,
       title: form.title.trim(),
@@ -75,7 +118,6 @@ export default function Learning() {
     }).select().single();
     if (error) { toast.error(error.message); return; }
 
-    // Bulk insert weeks if any
     const validWeeks = weeks.filter(w => w.title.trim());
     if (validWeeks.length) {
       const rows = validWeeks.map((w, i) => ({
@@ -88,9 +130,7 @@ export default function Learning() {
     }
 
     toast.success("Learning path created");
-    setOpen(false);
-    setForm({ title: "", topic: "", description: "", emoji: "📚", start_date: "", end_date: "", group_id: "personal" });
-    setWeeks([]);
+    setOpen(false); resetForm();
     navigate(`/learning/${data!.id}`);
   };
 
@@ -101,10 +141,10 @@ export default function Learning() {
           <h1 className="text-3xl font-bold flex items-center gap-2"><GraduationCap className="h-7 w-7 text-primary" /> Learning</h1>
           <p className="text-muted-foreground">Plan what to learn, track weekly progress, and reflect on what you took away.</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> New Path</Button></DialogTrigger>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
+          <DialogTrigger asChild><Button onClick={() => resetForm()}><Plus className="h-4 w-4 mr-2" /> New Path</Button></DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>New learning path</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editing ? "Edit learning path" : "New learning path"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div className="flex gap-2">
                 <Input className="w-20" value={form.emoji} onChange={e => setForm({ ...form, emoji: e.target.value })} placeholder="📚" />
@@ -127,31 +167,35 @@ export default function Learning() {
                 </Select>
               </div>
 
-              <div className="border-t pt-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium">Weekly plan</div>
-                    <div className="text-xs text-muted-foreground">Sketch the weeks now (you can add more later).</div>
+              {!editing && (
+                <div className="border-t pt-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium">Weekly plan</div>
+                      <div className="text-xs text-muted-foreground">Sketch the weeks now (you can add more later).</div>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={addWeek}><Plus className="h-3 w-3 mr-1" /> Add week</Button>
                   </div>
-                  <Button size="sm" variant="outline" onClick={addWeek}><Plus className="h-3 w-3 mr-1" /> Add week</Button>
+                  {weeks.map((w, i) => (
+                    <div key={i} className="rounded border p-2 space-y-2 bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">Week {i + 1}</Badge>
+                        <Input className="flex-1" value={w.title} onChange={e => updateWeek(i, { title: e.target.value })} placeholder="Week title (e.g. Explore Android ecosystem)" />
+                        <Button size="icon" variant="ghost" onClick={() => removeWeek(i)}><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                      <Input value={w.focus} onChange={e => updateWeek(i, { focus: e.target.value })} placeholder="Focus / outcome" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input type="date" value={w.start_date} onChange={e => updateWeek(i, { start_date: e.target.value })} />
+                        <Input type="date" value={w.end_date} onChange={e => updateWeek(i, { end_date: e.target.value })} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                {weeks.map((w, i) => (
-                  <div key={i} className="rounded border p-2 space-y-2 bg-muted/30">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">Week {i + 1}</Badge>
-                      <Input className="flex-1" value={w.title} onChange={e => updateWeek(i, { title: e.target.value })} placeholder="Week title (e.g. Explore Android ecosystem)" />
-                      <Button size="icon" variant="ghost" onClick={() => removeWeek(i)}><Trash2 className="h-4 w-4" /></Button>
-                    </div>
-                    <Input value={w.focus} onChange={e => updateWeek(i, { focus: e.target.value })} placeholder="Focus / outcome" />
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input type="date" value={w.start_date} onChange={e => updateWeek(i, { start_date: e.target.value })} />
-                      <Input type="date" value={w.end_date} onChange={e => updateWeek(i, { end_date: e.target.value })} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              )}
 
-              <Button onClick={create} className="w-full">Create path{weeks.filter(w => w.title.trim()).length ? ` + ${weeks.filter(w => w.title.trim()).length} weeks` : ""}</Button>
+              <Button onClick={save} className="w-full">
+                {editing ? "Save changes" : `Create path${weeks.filter(w => w.title.trim()).length ? ` + ${weeks.filter(w => w.title.trim()).length} weeks` : ""}`}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -169,9 +213,19 @@ export default function Learning() {
             const pct = pr.total ? Math.round((pr.done / pr.total) * 100) : 0;
             const groupName = p.group_id ? groups.find(g => g.id === p.group_id)?.name : null;
             return (
-              <Card key={p.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/learning/${p.id}`)}>
+              <Card key={p.id} className="group cursor-pointer hover:shadow-md transition-shadow relative" onClick={() => navigate(`/learning/${p.id}`)}>
+                {p.user_id === user?.id && (
+                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openEdit(p); }}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={(e) => removePath(p, e)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
+                  <CardTitle className="flex items-center gap-2 text-lg pr-16">
                     <span className="text-2xl">{p.emoji}</span> {p.title}
                   </CardTitle>
                   <CardDescription className="flex items-center gap-2 flex-wrap">
