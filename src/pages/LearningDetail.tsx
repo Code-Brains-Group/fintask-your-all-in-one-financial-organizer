@@ -14,7 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ArrowLeft, Plus, CheckCircle2, MessageSquare, Trash2, Star, Users, Crown, ListTodo } from "lucide-react";
+import { ArrowLeft, Plus, CheckCircle2, MessageSquare, Trash2, Star, Users, Crown, ListTodo, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 type Path = { id: string; title: string; topic: string | null; description: string | null; emoji: string | null; status: string; group_id: string | null; user_id: string; start_date: string | null; end_date: string | null; };
