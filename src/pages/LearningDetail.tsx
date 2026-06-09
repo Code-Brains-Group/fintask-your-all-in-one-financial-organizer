@@ -291,6 +291,30 @@ export default function LearningDetail() {
               {path.status !== "completed" && isOwner && (
                 <Button size="sm" onClick={completePath}><CheckCircle2 className="h-4 w-4 mr-1" /> Complete path</Button>
               )}
+              {isOwner && (
+                <>
+                  <Button size="sm" variant="outline" onClick={openEditPath}><Pencil className="h-4 w-4 mr-1" /> Edit</Button>
+                  <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={deletePath}><Trash2 className="h-4 w-4 mr-1" /> Delete</Button>
+                </>
+              )}
+              <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Edit learning path</DialogTitle></DialogHeader>
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <Input className="w-20" value={editForm.emoji} onChange={e => setEditForm({ ...editForm, emoji: e.target.value })} placeholder="📚" />
+                      <Input value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} placeholder="Title" />
+                    </div>
+                    <Input value={editForm.topic} onChange={e => setEditForm({ ...editForm, topic: e.target.value })} placeholder="Topic" />
+                    <Textarea value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input type="date" value={editForm.start_date} onChange={e => setEditForm({ ...editForm, start_date: e.target.value })} />
+                      <Input type="date" value={editForm.end_date} onChange={e => setEditForm({ ...editForm, end_date: e.target.value })} />
+                    </div>
+                    <Button onClick={savePathEdit} className="w-full">Save changes</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </CardHeader>
