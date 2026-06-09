@@ -176,32 +176,68 @@ export default function Insights() {
 
   const next = nextMonthKey();
 
+  const surplus = data.incomeAvg - data.totalPredicted;
+  const surplusPct = data.incomeAvg > 0 ? Math.max(-100, Math.min(100, Math.round((surplus / data.incomeAvg) * 100))) : 0;
+  const ringPct = Math.max(0, Math.min(100, surplusPct));
+  const ringCircum = 2 * Math.PI * 42;
+  const ringOffset = ringCircum - (ringCircum * ringPct) / 100;
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2"><Sparkles className="h-6 w-6 text-primary" /> Spending Insights</h1>
-        <p className="text-muted-foreground text-sm">Patterns from your history and a forecast for next month.</p>
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <span className="relative">
+              <Sparkles className="h-7 w-7 text-primary" />
+              <span className="absolute inset-0 blur-md bg-primary/40 rounded-full -z-10" />
+            </span>
+            Spending Insights
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">Patterns from your history and a forecast for next month.</p>
+        </div>
+        <Badge variant="outline" className="text-xs"><Calendar className="h-3 w-3 mr-1" /> Forecast for {monthLabel(next)}</Badge>
       </div>
 
-      {/* Forecast banner */}
-      <Card className="border-primary/30 bg-primary-soft/30">
-        <CardContent className="p-5 grid gap-4 md:grid-cols-3">
-          <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> Forecast — {monthLabel(next)}</div>
-            <div className="text-3xl font-bold mt-1">{fmtKES(data.totalPredicted)}</div>
-            <div className="text-xs text-muted-foreground">Predicted spend (incl. fees)</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">Avg income (3mo)</div>
-            <div className="text-3xl font-bold mt-1 text-success">{fmtKES(data.incomeAvg)}</div>
-            <div className="text-xs text-muted-foreground">Baseline to compare against</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">Potential surplus</div>
-            <div className={`text-3xl font-bold mt-1 ${data.incomeAvg - data.totalPredicted >= 0 ? "text-success" : "text-danger"}`}>
-              {fmtKES(data.incomeAvg - data.totalPredicted)}
+      {/* Hero forecast */}
+      <Card className="overflow-hidden border-0 shadow-lg relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-primary/5 to-success/10 pointer-events-none" />
+        <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
+        <CardContent className="p-6 grid gap-6 md:grid-cols-[1fr_auto] items-center relative">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Predicted spend</div>
+              <div className="text-3xl font-bold mt-1 tabular-nums">{fmtKES(data.totalPredicted)}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">incl. fees</div>
             </div>
-            <div className="text-xs text-muted-foreground">If patterns hold</div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Avg income</div>
+              <div className="text-3xl font-bold mt-1 text-success tabular-nums">{fmtKES(data.incomeAvg)}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">3-month baseline</div>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Potential surplus</div>
+              <div className={`text-3xl font-bold mt-1 tabular-nums ${surplus >= 0 ? "text-success" : "text-danger"}`}>
+                {surplus >= 0 ? "+" : ""}{fmtKES(surplus)}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">if patterns hold</div>
+            </div>
+          </div>
+          <div className="relative flex items-center justify-center">
+            <svg width="110" height="110" viewBox="0 0 100 100" className="-rotate-90">
+              <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
+              <circle
+                cx="50" cy="50" r="42" fill="none"
+                stroke={surplus >= 0 ? "hsl(var(--success))" : "hsl(var(--danger))"}
+                strokeWidth="8" strokeLinecap="round"
+                strokeDasharray={ringCircum}
+                strokeDashoffset={ringOffset}
+                style={{ transition: "stroke-dashoffset 800ms cubic-bezier(.4,0,.2,1)" }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className={`text-xl font-bold ${surplus >= 0 ? "text-success" : "text-danger"}`}>{surplusPct >= 0 ? "+" : ""}{surplusPct}%</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">save rate</div>
+            </div>
           </div>
         </CardContent>
       </Card>
