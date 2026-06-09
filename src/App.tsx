@@ -16,6 +16,7 @@ import Budgets from "./pages/Budgets";
 import Savings from "./pages/Savings";
 import Recurring from "./pages/Recurring";
 import Reports from "./pages/Reports";
+import Insights from "./pages/Insights";
 import Applications from "./pages/Applications";
 import Groups from "./pages/Groups";
 import GroupDetail from "./pages/GroupDetail";
