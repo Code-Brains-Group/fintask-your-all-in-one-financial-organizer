@@ -213,9 +213,19 @@ export default function Learning() {
             const pct = pr.total ? Math.round((pr.done / pr.total) * 100) : 0;
             const groupName = p.group_id ? groups.find(g => g.id === p.group_id)?.name : null;
             return (
-              <Card key={p.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/learning/${p.id}`)}>
+              <Card key={p.id} className="group cursor-pointer hover:shadow-md transition-shadow relative" onClick={() => navigate(`/learning/${p.id}`)}>
+                {p.user_id === user?.id && (
+                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openEdit(p); }}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={(e) => removePath(p, e)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
+                  <CardTitle className="flex items-center gap-2 text-lg pr-16">
                     <span className="text-2xl">{p.emoji}</span> {p.title}
                   </CardTitle>
                   <CardDescription className="flex items-center gap-2 flex-wrap">
