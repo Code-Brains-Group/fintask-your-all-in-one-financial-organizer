@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Plus, GraduationCap, Users, BookOpen, Trash2 } from "lucide-react";
+import { Plus, GraduationCap, Users, BookOpen, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 type Path = {
