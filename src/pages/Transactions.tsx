@@ -190,6 +190,7 @@ function TxSheet({ wallets, categories, tiers, tasks, tx, onSaved, trigger }: an
   const [method, setMethod] = useState(tx?.method || "direct");
   const [note, setNote] = useState(tx?.note || "");
   const [taskId, setTaskId] = useState(tx?.task_id || "");
+  const [otherLabel, setOtherLabel] = useState("");
   const [customFee, setCustomFee] = useState(tx?.method === "custom" || tx?.method === "bank_transfer" || tx?.method === "bank_to_mpesa" ? tx?.fee?.toString() : "");
   const [saving, setSaving] = useState(false);
 
