@@ -58,7 +58,7 @@ export default function Reports() {
 
   // Determine "current month" for close action, respecting fiscal start
   const currentMonth = useMemo(() => {
-    const startDay = fiscal?.month_start_day || 1;
+    const startDay = fiscal?.monthStartDay || 1;
     const now = new Date();
     const anchor = new Date(now);
     if (anchor.getDate() < startDay) anchor.setMonth(anchor.getMonth() - 1);
