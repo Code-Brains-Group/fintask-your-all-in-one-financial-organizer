@@ -51,8 +51,11 @@ export default function Dashboard() {
     setAllTasks(ta.data || []);
     setGoals(g.data || []);
     setContributions(sc.data || []);
-    setPending(p.data || []);
-    setRules(r.data || []);
+    const rulesList = r.data || [];
+    const ruleIds = new Set(rulesList.map((x: any) => x.id));
+    // Only show pending entries whose rule still exists (avoids "phantom" count)
+    setPending((p.data || []).filter((x: any) => ruleIds.has(x.rule_id)));
+    setRules(rulesList);
     setLoading(false);
   };
 
