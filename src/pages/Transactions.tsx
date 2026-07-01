@@ -214,8 +214,11 @@ function TxSheet({ wallets, categories, tiers, tasks, tx, onSaved, trigger }: an
     if (!description || !amount || !walletId) { toast.error("Fill required fields"); return; }
     if (type === "transfer" && !toWalletId) { toast.error("Pick destination wallet"); return; }
     setSaving(true);
+    const finalDesc = isOtherCat && otherLabel.trim()
+      ? `${otherLabel.trim()} — ${description}`
+      : description;
     const payload: any = {
-      description, amount: Number(amount), type,
+      description: finalDesc, amount: Number(amount), type,
       category_id: categoryId || null, wallet_id: walletId,
       to_wallet_id: type === "transfer" ? toWalletId : null,
       date, method, fee, note: note || null,
