@@ -190,6 +190,7 @@ function TxSheet({ wallets, categories, tiers, tasks, tx, onSaved, trigger }: an
   const [method, setMethod] = useState(tx?.method || "direct");
   const [note, setNote] = useState(tx?.note || "");
   const [taskId, setTaskId] = useState(tx?.task_id || "");
+  const [otherLabel, setOtherLabel] = useState("");
   const [customFee, setCustomFee] = useState(tx?.method === "custom" || tx?.method === "bank_transfer" || tx?.method === "bank_to_mpesa" ? tx?.fee?.toString() : "");
   const [saving, setSaving] = useState(false);
 
@@ -206,13 +207,18 @@ function TxSheet({ wallets, categories, tiers, tasks, tx, onSaved, trigger }: an
   const autoFee = type !== "income" && !isCustomFeeMethod ? lookupFee(Number(amount), method, tiers) : 0;
   const fee = isCustomFeeMethod ? Number(customFee || 0) : autoFee;
   const filteredCats = categories.filter((c: any) => c.type === type || type === "transfer");
+  const selectedCat = categories.find((c: any) => c.id === categoryId);
+  const isOtherCat = selectedCat && /^other/i.test(selectedCat.name);
 
   const submit = async () => {
     if (!description || !amount || !walletId) { toast.error("Fill required fields"); return; }
     if (type === "transfer" && !toWalletId) { toast.error("Pick destination wallet"); return; }
     setSaving(true);
+    const finalDesc = isOtherCat && otherLabel.trim()
+      ? `${otherLabel.trim()} — ${description}`
+      : description;
     const payload: any = {
-      description, amount: Number(amount), type,
+      description: finalDesc, amount: Number(amount), type,
       category_id: categoryId || null, wallet_id: walletId,
       to_wallet_id: type === "transfer" ? toWalletId : null,
       date, method, fee, note: note || null,
@@ -242,10 +248,16 @@ function TxSheet({ wallets, categories, tiers, tasks, tx, onSaved, trigger }: an
           <div><Label>Amount</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" /></div>
           {type !== "transfer" && (
             <div><Label>Category</Label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
+              <Select value={categoryId} onValueChange={(v) => { setCategoryId(v); if (!/^other/i.test(categories.find((c:any)=>c.id===v)?.name || "")) setOtherLabel(""); }}>
                 <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>{filteredCats.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}</SelectContent>
               </Select>
+              {isOtherCat && (
+                <div className="mt-2">
+                  <Label className="text-xs text-muted-foreground">Specify (optional)</Label>
+                  <Input value={otherLabel} onChange={(e) => setOtherLabel(e.target.value)} placeholder={type === "income" ? "e.g. Gift, Refund, Freelance…" : "e.g. Donation, Repair…"} />
+                </div>
+              )}
             </div>
           )}
           <div><Label>{type === "transfer" ? "From wallet" : "Wallet"}</Label>

@@ -195,6 +195,39 @@ export type Database = {
         }
         Relationships: []
       }
+      closed_months: {
+        Row: {
+          closed_at: string
+          closed_by_name: string | null
+          created_at: string
+          id: string
+          insights: string | null
+          period: string
+          summary: Json
+          user_id: string
+        }
+        Insert: {
+          closed_at?: string
+          closed_by_name?: string | null
+          created_at?: string
+          id?: string
+          insights?: string | null
+          period: string
+          summary?: Json
+          user_id: string
+        }
+        Update: {
+          closed_at?: string
+          closed_by_name?: string | null
+          created_at?: string
+          id?: string
+          insights?: string | null
+          period?: string
+          summary?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       cost_providers: {
         Row: {
           created_at: string
@@ -606,6 +639,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           currency: string
+          custom_repos: Json
           display_name: string | null
           feature_focus: string
           fiscal_month_start_day: number
@@ -629,6 +663,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           currency?: string
+          custom_repos?: Json
           display_name?: string | null
           feature_focus?: string
           fiscal_month_start_day?: number
@@ -652,6 +687,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           currency?: string
+          custom_repos?: Json
           display_name?: string | null
           feature_focus?: string
           fiscal_month_start_day?: number
