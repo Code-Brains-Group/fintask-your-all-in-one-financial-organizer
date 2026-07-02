@@ -62,7 +62,7 @@ export function downloadMonthReport(r: MonthReport) {
     startY: catStart + 8,
     head: [["Category", "Amount", "% of expenses"]],
     body: r.byCategory.length
-      ? r.byCategory.map(c => [c.name, fmtKES(c.value), r.expense > 0 ? ((c.value / r.expense) * 100).toFixed(1) + "%" : "—"])
+      ? r.byCategory.map(c => [c.name, fmtKES(c.value), r.expense > 0 ? ((c.value / r.expense) * 100).toFixed(1) + "%" : "-"])
       : [["No expenses recorded", "—", "—"]],
     theme: "striped",
     headStyles: { fillColor: [52, 168, 83] },
