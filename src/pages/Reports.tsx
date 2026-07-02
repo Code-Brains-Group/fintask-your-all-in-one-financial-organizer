@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fmtKES, fmtDate } from "@/lib/finance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { DateFilter } from "@/components/DateFilter";
 import { DateShortcut, DateRange, inRange, rangeFor } from "@/lib/dateFilters";
