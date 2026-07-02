@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fmtKES, fmtDate } from "@/lib/finance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { DateFilter } from "@/components/DateFilter";
 import { DateShortcut, DateRange, inRange, rangeFor } from "@/lib/dateFilters";
@@ -21,6 +22,7 @@ export default function Reports() {
   const [cats, setCats] = useState<any[]>([]);
   const [closed, setClosed] = useState<any[]>([]);
   const [profileName, setProfileName] = useState<string>("");
+  const [closeMonth, setCloseMonth] = useState<string>(""); // YYYY-MM
   const [filter, setFilter] = useState<{ shortcut: DateShortcut; range: DateRange; custom?: any }>({ shortcut: "month", range: rangeFor("month", undefined, fiscal) });
 
   const loadAll = async () => {
@@ -56,30 +58,39 @@ export default function Reports() {
   });
   const trend = Object.values(byDay).sort((a,b) => a.day.localeCompare(b.day));
 
-  // Determine "current month" for close action, respecting fiscal start
+  // Compute the fiscal-month window for any YYYY-MM the user picks
+  const monthWindow = (yyyymm: string) => {
+    const startDay = fiscal?.monthStartDay || 1;
+    const [ys, ms] = yyyymm.split("-").map(Number);
+    const y = ys, m = (ms || 1) - 1;
+    const start = new Date(y, m, startDay);
+    const end = new Date(y, m + 1, startDay - 1, 23, 59, 59);
+    const label = start.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    return { start, end, label, period: yyyymm };
+  };
+
   const currentMonth = useMemo(() => {
     const startDay = fiscal?.monthStartDay || 1;
     const now = new Date();
     const anchor = new Date(now);
     if (anchor.getDate() < startDay) anchor.setMonth(anchor.getMonth() - 1);
-    const y = anchor.getFullYear();
-    const m = anchor.getMonth();
-    const start = new Date(y, m, startDay);
-    const end = new Date(y, m + 1, startDay - 1, 23, 59, 59);
-    const label = start.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-    const period = `${y}-${String(m + 1).padStart(2, "0")}`;
-    return { start, end, label, period };
+    const period = `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, "0")}`;
+    return monthWindow(period);
   }, [fiscal]);
 
-  const alreadyClosed = closed.some(c => c.period === currentMonth.period);
+  // Default the close-picker to current month
+  useEffect(() => { if (!closeMonth) setCloseMonth(currentMonth.period); }, [currentMonth.period]);
 
-  const closeCurrentMonth = async () => {
+  const targetMonth = useMemo(() => monthWindow(closeMonth || currentMonth.period), [closeMonth, currentMonth.period, fiscal]);
+  const alreadyClosed = closed.some(c => c.period === targetMonth.period);
+
+  const closeSelectedMonth = async () => {
     if (alreadyClosed) { toast.error("Month already closed"); return; }
-    if (!confirm(`Close ${currentMonth.label}? You can reopen or delete it later.`)) return;
+    if (!confirm(`Close ${targetMonth.label}? You can reopen or delete it later.`)) return;
 
     const monthTx = tx.filter(t => {
       const d = new Date(t.date);
-      return d >= currentMonth.start && d <= currentMonth.end;
+      return d >= targetMonth.start && d <= targetMonth.end;
     });
     const inc = monthTx.filter(t => t.type === "income").reduce((a, t) => a + Number(t.amount), 0);
     const exp = monthTx.filter(t => t.type === "expense").reduce((a, t) => a + Number(t.amount), 0);
@@ -89,9 +100,8 @@ export default function Reports() {
       value: monthTx.filter(t => t.type === "expense" && t.category_id === c.id).reduce((a, t) => a + Number(t.amount), 0),
     })).filter(d => d.value > 0).sort((a,b) => b.value - a.value);
 
-    // Previous month for trend
-    const prevStart = new Date(currentMonth.start); prevStart.setMonth(prevStart.getMonth() - 1);
-    const prevEnd = new Date(currentMonth.end); prevEnd.setMonth(prevEnd.getMonth() - 1);
+    const prevStart = new Date(targetMonth.start); prevStart.setMonth(prevStart.getMonth() - 1);
+    const prevEnd = new Date(targetMonth.end); prevEnd.setMonth(prevEnd.getMonth() - 1);
     const prevExp = tx.filter(t => {
       const d = new Date(t.date); return d >= prevStart && d <= prevEnd && t.type === "expense";
     }).reduce((a, t) => a + Number(t.amount), 0);
@@ -100,7 +110,7 @@ export default function Reports() {
     const tips = buildTips(inc, exp, byC);
 
     const summary = {
-      periodLabel: currentMonth.label,
+      periodLabel: targetMonth.label,
       income: inc, expense: exp, fees: fee, net: inc - exp - fee,
       txCount: monthTx.length,
       byCategory: byC,
@@ -109,13 +119,13 @@ export default function Reports() {
 
     const { error } = await supabase.from("closed_months").insert({
       user_id: user!.id,
-      period: currentMonth.period,
+      period: targetMonth.period,
       closed_by_name: profileName,
       summary: summary as any,
-      insights: insights.join(" • "),
+      insights: insights.join(" | "),
     });
     if (error) { toast.error(error.message); return; }
-    toast.success(`${currentMonth.label} closed`);
+    toast.success(`${targetMonth.label} closed`);
     loadAll();
   };
 
@@ -170,12 +180,15 @@ export default function Reports() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold">Reports</h1>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
           <Button variant="outline" onClick={exportReport}><Download className="h-4 w-4 mr-1" /> Excel</Button>
           <Button variant="outline" onClick={downloadCurrentPdf}><FileText className="h-4 w-4 mr-1" /> PDF (current view)</Button>
-          <Button onClick={closeCurrentMonth} disabled={alreadyClosed}>
-            <Lock className="h-4 w-4 mr-1" /> {alreadyClosed ? `${currentMonth.label} closed` : `Close ${currentMonth.label}`}
-          </Button>
+          <div className="flex items-center gap-2 rounded-md border px-2 py-1 bg-card">
+            <Input type="month" value={closeMonth} max={currentMonth.period} onChange={(e) => setCloseMonth(e.target.value)} className="h-8 w-40 border-0 p-1 focus-visible:ring-0" />
+            <Button size="sm" onClick={closeSelectedMonth} disabled={alreadyClosed}>
+              <Lock className="h-4 w-4 mr-1" /> {alreadyClosed ? "Closed" : `Close ${targetMonth.label}`}
+            </Button>
+          </div>
         </div>
       </div>
 

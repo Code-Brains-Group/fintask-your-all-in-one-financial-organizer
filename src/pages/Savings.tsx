@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Plus, Trash2, PiggyBank, Settings2 } from "lucide-react";
+import { Plus, Trash2, PiggyBank, Settings2, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
 const DEFAULT_REPO_TYPES = [
@@ -135,6 +135,37 @@ function Contribute({ goal, wallets, onSaved }: any) {
   );
 }
 
+function RepoRow({ repo, onSave, onDelete }: { repo: Repo; onSave: (value: string, icon: string, name: string) => void; onDelete: (value: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  // repo.label is "icon name" — split first token if it looks like an emoji
+  const parts = (repo.label || "").trim().split(" ");
+  const initialIcon = parts[0] || "💼";
+  const initialName = parts.slice(1).join(" ") || repo.label || "";
+  const [icon, setIcon] = useState(initialIcon);
+  const [name, setName] = useState(initialName);
+
+  if (!editing) {
+    return (
+      <div className="flex items-center justify-between text-sm px-3 py-2 rounded-md bg-card border">
+        <span>{repo.label}</span>
+        <div className="flex items-center gap-1">
+          <Button size="icon" variant="ghost" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" /></Button>
+          <Button size="icon" variant="ghost" onClick={() => onDelete(repo.value)}><Trash2 className="h-4 w-4" /></Button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 px-2 py-2 rounded-md bg-card border">
+      <Input value={icon} onChange={(e) => setIcon(e.target.value)} className="w-14 text-center" />
+      <Input value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
+      <Button size="icon" variant="ghost" onClick={() => { onSave(repo.value, icon, name); setEditing(false); }}><Check className="h-4 w-4" /></Button>
+      <Button size="icon" variant="ghost" onClick={() => { setIcon(initialIcon); setName(initialName); setEditing(false); }}><X className="h-4 w-4" /></Button>
+    </div>
+  );
+}
+
+
 function ManageRepos({ custom, onChange }: { custom: Repo[]; onChange: () => void }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -157,6 +188,12 @@ function ManageRepos({ custom, onChange }: { custom: Repo[]; onChange: () => voi
     if (!confirm("Remove this repository type? Existing goals keep their label.")) return;
     await save(custom.filter(r => r.value !== value));
     toast.success("Removed");
+  };
+  const saveEdit = async (value: string, nextIcon: string, nextName: string) => {
+    const trimmed = nextName.trim();
+    if (!trimmed) { toast.error("Name required"); return; }
+    await save(custom.map(r => r.value === value ? { ...r, label: `${nextIcon || "💼"} ${trimmed}` } : r));
+    toast.success("Updated");
   };
 
   return (
@@ -181,12 +218,7 @@ function ManageRepos({ custom, onChange }: { custom: Repo[]; onChange: () => voi
               <p className="text-xs text-muted-foreground mt-1">None yet — add one below.</p>
             ) : (
               <div className="mt-1 space-y-1">
-                {custom.map(r => (
-                  <div key={r.value} className="flex items-center justify-between text-sm px-3 py-2 rounded-md bg-card border">
-                    <span>{r.label}</span>
-                    <Button size="icon" variant="ghost" onClick={() => remove(r.value)}><Trash2 className="h-4 w-4" /></Button>
-                  </div>
-                ))}
+                {custom.map(r => <RepoRow key={r.value} repo={r} onSave={saveEdit} onDelete={remove} />)}
               </div>
             )}
           </div>
