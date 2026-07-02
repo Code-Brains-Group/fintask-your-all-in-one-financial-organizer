@@ -158,6 +158,12 @@ function ManageRepos({ custom, onChange }: { custom: Repo[]; onChange: () => voi
     await save(custom.filter(r => r.value !== value));
     toast.success("Removed");
   };
+  const saveEdit = async (value: string, nextIcon: string, nextName: string) => {
+    const trimmed = nextName.trim();
+    if (!trimmed) { toast.error("Name required"); return; }
+    await save(custom.map(r => r.value === value ? { ...r, label: `${nextIcon || "💼"} ${trimmed}` } : r));
+    toast.success("Updated");
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -181,12 +187,7 @@ function ManageRepos({ custom, onChange }: { custom: Repo[]; onChange: () => voi
               <p className="text-xs text-muted-foreground mt-1">None yet — add one below.</p>
             ) : (
               <div className="mt-1 space-y-1">
-                {custom.map(r => (
-                  <div key={r.value} className="flex items-center justify-between text-sm px-3 py-2 rounded-md bg-card border">
-                    <span>{r.label}</span>
-                    <Button size="icon" variant="ghost" onClick={() => remove(r.value)}><Trash2 className="h-4 w-4" /></Button>
-                  </div>
-                ))}
+                {custom.map(r => <RepoRow key={r.value} repo={r} onSave={saveEdit} onDelete={remove} />)}
               </div>
             )}
           </div>
