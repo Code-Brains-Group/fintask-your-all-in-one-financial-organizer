@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Plus, Trash2, PiggyBank, Settings2 } from "lucide-react";
+import { Plus, Trash2, PiggyBank, Settings2, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
 const DEFAULT_REPO_TYPES = [
