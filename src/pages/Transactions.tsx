@@ -208,7 +208,7 @@ function TxSheet({ wallets, categories, tiers, tasks, tx, onSaved, trigger }: an
   const fee = isCustomFeeMethod ? Number(customFee || 0) : autoFee;
   const filteredCats = categories.filter((c: any) => c.type === type || type === "transfer");
   const selectedCat = categories.find((c: any) => c.id === categoryId);
-  const isOtherCat = selectedCat && /^other/i.test(selectedCat.name);
+  const isOtherCat = !!selectedCat && /other/i.test(selectedCat.name || "");
 
   const submit = async () => {
     if (!description || !amount || !walletId) { toast.error("Fill required fields"); return; }
