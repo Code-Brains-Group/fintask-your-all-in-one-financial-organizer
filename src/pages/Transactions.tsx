@@ -248,7 +248,7 @@ function TxSheet({ wallets, categories, tiers, tasks, tx, onSaved, trigger }: an
           <div><Label>Amount</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" /></div>
           {type !== "transfer" && (
             <div><Label>Category</Label>
-              <Select value={categoryId} onValueChange={(v) => { setCategoryId(v); if (!/^other/i.test(categories.find((c:any)=>c.id===v)?.name || "")) setOtherLabel(""); }}>
+              <Select value={categoryId} onValueChange={(v) => { setCategoryId(v); if (!/other/i.test(categories.find((c:any)=>c.id===v)?.name || "")) setOtherLabel(""); }}>
                 <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>{filteredCats.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}</SelectContent>
               </Select>
