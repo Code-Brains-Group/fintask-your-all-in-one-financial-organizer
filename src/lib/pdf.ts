@@ -27,7 +27,7 @@ export function downloadMonthReport(r: MonthReport) {
   doc.rect(0, 0, W, 70, "F");
   doc.setTextColor(255);
   doc.setFontSize(20); doc.setFont("helvetica", "bold");
-  doc.text("FinTask — Monthly Report", 32, 32);
+  doc.text("FinTask - Monthly Report", 32, 32);
   doc.setFontSize(12); doc.setFont("helvetica", "normal");
   doc.text(r.periodLabel, 32, 52);
 
@@ -63,7 +63,7 @@ export function downloadMonthReport(r: MonthReport) {
     head: [["Category", "Amount", "% of expenses"]],
     body: r.byCategory.length
       ? r.byCategory.map(c => [c.name, fmtKES(c.value), r.expense > 0 ? ((c.value / r.expense) * 100).toFixed(1) + "%" : "-"])
-      : [["No expenses recorded", "—", "—"]],
+      : [["No expenses recorded", "-", "-"]],
     theme: "striped",
     headStyles: { fillColor: [52, 168, 83] },
     styles: { fontSize: 10 },
@@ -95,7 +95,7 @@ export function downloadMonthReport(r: MonthReport) {
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
     doc.setFontSize(8); doc.setTextColor(140);
-    doc.text(`FinTask · Confidential · Page ${i} of ${pages}`, 32, doc.internal.pageSize.getHeight() - 18);
+    doc.text(`FinTask - Confidential - Page ${i} of ${pages}`, 32, doc.internal.pageSize.getHeight() - 18);
   }
 
   doc.save(`FinTask-Report-${r.period}.pdf`);
@@ -106,7 +106,7 @@ export function buildInsights(income: number, expense: number, byCat: { name: st
   const net = income - expense;
   if (income > 0) out.push(`Save rate: ${((net / income) * 100).toFixed(1)}% of income kept.`);
   if (byCat[0]) out.push(`Top spend category was ${byCat[0].name} at ${fmtKES(byCat[0].value)} (${expense > 0 ? ((byCat[0].value / expense) * 100).toFixed(0) : 0}% of expenses).`);
-  if (byCat[1]) out.push(`Runner-up: ${byCat[1].name} — ${fmtKES(byCat[1].value)}.`);
+  if (byCat[1]) out.push(`Runner-up: ${byCat[1].name} - ${fmtKES(byCat[1].value)}.`);
   if (prevExpense !== undefined && prevExpense > 0) {
     const diff = ((expense - prevExpense) / prevExpense) * 100;
     out.push(`Spending was ${diff >= 0 ? "up" : "down"} ${Math.abs(diff).toFixed(1)}% vs the previous month.`);
@@ -118,12 +118,12 @@ export function buildInsights(income: number, expense: number, byCat: { name: st
 export function buildTips(income: number, expense: number, byCat: { name: string; value: number }[]) {
   const tips: string[] = [];
   if (byCat[0] && expense > 0 && byCat[0].value / expense > 0.35) {
-    tips.push(`${byCat[0].name} takes over a third of spend — consider a monthly cap next month.`);
+    tips.push(`${byCat[0].name} takes over a third of spend - consider a monthly cap next month.`);
   }
   const net = income - expense;
-  if (income > 0 && net / income < 0.1) tips.push("Aim for at least a 10% save rate — automate a transfer to savings on payday.");
+  if (income > 0 && net / income < 0.1) tips.push("Aim for at least a 10% save rate - automate a transfer to savings on payday.");
   if (net < 0) tips.push("Trim the two largest categories by 15% to bring next month back to positive.");
-  if (byCat.length > 5) tips.push("You spent across many categories — try setting a weekly cash allowance for discretionary items.");
+  if (byCat.length > 5) tips.push("You spent across many categories - try setting a weekly cash allowance for discretionary items.");
   tips.push("Review recurring subscriptions and cancel any you haven't used in the last 30 days.");
   return tips;
 }
