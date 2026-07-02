@@ -179,12 +179,15 @@ export default function Reports() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold">Reports</h1>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
           <Button variant="outline" onClick={exportReport}><Download className="h-4 w-4 mr-1" /> Excel</Button>
           <Button variant="outline" onClick={downloadCurrentPdf}><FileText className="h-4 w-4 mr-1" /> PDF (current view)</Button>
-          <Button onClick={closeCurrentMonth} disabled={alreadyClosed}>
-            <Lock className="h-4 w-4 mr-1" /> {alreadyClosed ? `${currentMonth.label} closed` : `Close ${currentMonth.label}`}
-          </Button>
+          <div className="flex items-center gap-2 rounded-md border px-2 py-1 bg-card">
+            <Input type="month" value={closeMonth} max={currentMonth.period} onChange={(e) => setCloseMonth(e.target.value)} className="h-8 w-40 border-0 p-1 focus-visible:ring-0" />
+            <Button size="sm" onClick={closeSelectedMonth} disabled={alreadyClosed}>
+              <Lock className="h-4 w-4 mr-1" /> {alreadyClosed ? "Closed" : `Close ${targetMonth.label}`}
+            </Button>
+          </div>
         </div>
       </div>
 
