@@ -21,6 +21,7 @@ export default function Reports() {
   const [cats, setCats] = useState<any[]>([]);
   const [closed, setClosed] = useState<any[]>([]);
   const [profileName, setProfileName] = useState<string>("");
+  const [closeMonth, setCloseMonth] = useState<string>(""); // YYYY-MM
   const [filter, setFilter] = useState<{ shortcut: DateShortcut; range: DateRange; custom?: any }>({ shortcut: "month", range: rangeFor("month", undefined, fiscal) });
 
   const loadAll = async () => {
