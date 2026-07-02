@@ -76,7 +76,7 @@ export function downloadMonthReport(r: MonthReport) {
   doc.text("This month's insights", 32, y); y += 14;
   doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(60);
   (r.insights.length ? r.insights : ["No standout patterns."]).forEach(line => {
-    const wrapped = doc.splitTextToSize(`• ${line}`, W - 64);
+    const wrapped = doc.splitTextToSize(`-  ${line}`, W - 64);
     doc.text(wrapped, 32, y); y += wrapped.length * 12 + 2;
   });
 
@@ -86,7 +86,7 @@ export function downloadMonthReport(r: MonthReport) {
   doc.text("Recommendations for next month", 32, y); y += 14;
   doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(60);
   (r.nextMonthTips.length ? r.nextMonthTips : ["Keep tracking consistently."]).forEach(line => {
-    const wrapped = doc.splitTextToSize(`→ ${line}`, W - 64);
+    const wrapped = doc.splitTextToSize(`>  ${line}`, W - 64);
     doc.text(wrapped, 32, y); y += wrapped.length * 12 + 2;
   });
 
