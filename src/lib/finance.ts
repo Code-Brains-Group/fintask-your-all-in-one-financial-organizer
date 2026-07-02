@@ -1,7 +1,7 @@
 export const fmtKES = (n: number | null | undefined) => {
   const v = Number(n ?? 0);
   const sign = v < 0 ? "-" : "";
-  return `${sign}KES ${Math.abs(v).toLocaleString("en-KE", { maximumFractionDigits: 2 })}`;
+  return `${sign}KES ${Math.abs(v).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 };
 
 export const fmtDate = (d: string | Date | null | undefined) => {
