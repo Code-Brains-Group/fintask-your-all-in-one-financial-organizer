@@ -18,12 +18,14 @@ export default function JoinGroup() {
 
   useEffect(() => {
     (async () => {
-      const { data: inv } = await supabase.from("group_invites").select("*").eq("code", code.toUpperCase()).maybeSingle();
-      if (!inv) { setError("Invite not found"); return; }
-      if (!inv.active) { setError("Invite is no longer active"); return; }
-      setInvite(inv);
-      const { data: g } = await supabase.from("groups").select("id,name,emoji,description,kind").eq("id", inv.group_id).maybeSingle();
-      setGroup(g);
+      const { data, error: rpcErr } = await supabase.rpc("get_invite_preview", { _code: code.toUpperCase() });
+      const row = Array.isArray(data) ? data[0] : data;
+      if (rpcErr || !row) { setError("Invite not found"); return; }
+      if (!row.active) { setError("Invite is no longer active"); return; }
+      if (row.expired) { setError("Invite has expired"); return; }
+      if (row.exhausted) { setError("Invite has reached max uses"); return; }
+      setInvite({ code: code.toUpperCase(), active: row.active });
+      setGroup({ id: row.group_id, name: row.group_name, emoji: row.group_emoji, description: row.group_description, kind: row.group_kind });
     })();
   }, [code]);
 
