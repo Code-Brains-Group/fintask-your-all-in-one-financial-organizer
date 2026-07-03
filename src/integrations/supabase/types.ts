@@ -1175,6 +1175,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_invite_preview: {
+        Args: { _code: string }
+        Returns: {
+          active: boolean
+          exhausted: boolean
+          expired: boolean
+          group_description: string
+          group_emoji: string
+          group_id: string
+          group_kind: string
+          group_name: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
