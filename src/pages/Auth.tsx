@@ -52,12 +52,33 @@ export default function Auth() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         navigate("/");
-      } else {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
+      } else if (mode === "forgot") {
+        // Send a 6-digit OTP code (default email includes {{ .Token }})
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { shouldCreateUser: false },
         });
         if (error) throw error;
-        toast.success("Password reset email sent");
+        toast.success("We sent a 6-digit code to your email");
+        setCode("");
+        setMode("verify");
+      } else if (mode === "verify") {
+        if (code.length !== 6) throw new Error("Enter the 6-digit code");
+        const { error } = await supabase.auth.verifyOtp({
+          email,
+          token: code,
+          type: "email",
+        });
+        if (error) throw error;
+        toast.success("Code verified — set your new password");
+        setPassword("");
+        setMode("newpass");
+      } else if (mode === "newpass") {
+        if (password.length < 6) throw new Error("Password must be at least 6 characters");
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+        toast.success("Password updated");
+        navigate("/");
       }
     } catch (e: any) {
       toast.error(e.message || "Something went wrong");
