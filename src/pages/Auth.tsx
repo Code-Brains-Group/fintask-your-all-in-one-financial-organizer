@@ -5,18 +5,22 @@ import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "sonner";
 import { Wallet } from "lucide-react";
+
+type Mode = "login" | "signup" | "forgot" | "verify" | "newpass";
 
 export default function Auth() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "signup" | "forgot">(
-    (params.get("mode") as any) || "login"
+  const [mode, setMode] = useState<Mode>(
+    (params.get("mode") as Mode) || "login"
   );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
