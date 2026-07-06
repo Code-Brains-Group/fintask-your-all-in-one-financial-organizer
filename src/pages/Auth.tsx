@@ -118,11 +118,15 @@ export default function Auth() {
               {mode === "login" && "Welcome back"}
               {mode === "signup" && "Create your account"}
               {mode === "forgot" && "Reset your password"}
+              {mode === "verify" && "Enter verification code"}
+              {mode === "newpass" && "Set a new password"}
             </h2>
             <p className="text-muted-foreground text-sm mt-1">
               {mode === "login" && "Sign in to continue to FinTask"}
               {mode === "signup" && "Start tracking your finances in seconds"}
-              {mode === "forgot" && "We'll email you a reset link"}
+              {mode === "forgot" && "We'll email you a 6-digit code"}
+              {mode === "verify" && `Enter the 6-digit code sent to ${email}`}
+              {mode === "newpass" && "Choose a strong password you'll remember"}
             </p>
           </div>
 
@@ -133,36 +137,49 @@ export default function Auth() {
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" />
               </div>
             )}
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
-            </div>
-            {mode !== "forgot" && (
+            {(mode === "login" || mode === "signup" || mode === "forgot") && (
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+              </div>
+            )}
+            {(mode === "login" || mode === "signup") && (
               <div>
                 <Label htmlFor="password">Password</Label>
                 <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
             )}
+            {mode === "verify" && (
+              <div className="flex justify-center py-2">
+                <InputOTP maxLength={6} value={code} onChange={setCode} inputMode="numeric" pattern="[0-9]*">
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+            )}
+            {mode === "newpass" && (
+              <div>
+                <Label htmlFor="newpw">New password</Label>
+                <Input id="newpw" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Please wait…" : mode === "login" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"}
+              {loading ? "Please wait…" :
+                mode === "login" ? "Sign in" :
+                mode === "signup" ? "Create account" :
+                mode === "forgot" ? "Send code" :
+                mode === "verify" ? "Verify code" :
+                "Update password"}
             </Button>
           </form>
 
-          {/* Google OAuth — temporarily disabled
-          {mode !== "forgot" && (
-            <>
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">or</span>
-                </div>
-              </div>
-              <Button type="button" variant="outline" className="w-full" onClick={google}>
-                Continue with Google
-              </Button>
-            </>
-          )}
-          */}
+          {/* Google OAuth — temporarily disabled */}
 
           <div className="text-sm text-center text-muted-foreground space-y-1">
             {mode === "login" && (
@@ -173,6 +190,12 @@ export default function Auth() {
             )}
             {mode === "signup" && <p>Already have an account? <button className="text-primary hover:underline" onClick={() => setMode("login")}>Sign in</button></p>}
             {mode === "forgot" && <p><button className="text-primary hover:underline" onClick={() => setMode("login")}>Back to sign in</button></p>}
+            {mode === "verify" && (
+              <>
+                <p><button className="text-primary hover:underline" onClick={() => setMode("forgot")}>Resend code</button></p>
+                <p><button className="text-primary hover:underline" onClick={() => setMode("login")}>Back to sign in</button></p>
+              </>
+            )}
           </div>
         </div>
       </div>
