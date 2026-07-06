@@ -5,18 +5,22 @@ import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "sonner";
 import { Wallet } from "lucide-react";
+
+type Mode = "login" | "signup" | "forgot" | "verify" | "newpass";
 
 export default function Auth() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "signup" | "forgot">(
-    (params.get("mode") as any) || "login"
+  const [mode, setMode] = useState<Mode>(
+    (params.get("mode") as Mode) || "login"
   );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -48,12 +52,33 @@ export default function Auth() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         navigate("/");
-      } else {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
+      } else if (mode === "forgot") {
+        // Send a 6-digit OTP code (default email includes {{ .Token }})
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { shouldCreateUser: false },
         });
         if (error) throw error;
-        toast.success("Password reset email sent");
+        toast.success("We sent a 6-digit code to your email");
+        setCode("");
+        setMode("verify");
+      } else if (mode === "verify") {
+        if (code.length !== 6) throw new Error("Enter the 6-digit code");
+        const { error } = await supabase.auth.verifyOtp({
+          email,
+          token: code,
+          type: "email",
+        });
+        if (error) throw error;
+        toast.success("Code verified — set your new password");
+        setPassword("");
+        setMode("newpass");
+      } else if (mode === "newpass") {
+        if (password.length < 6) throw new Error("Password must be at least 6 characters");
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+        toast.success("Password updated");
+        navigate("/");
       }
     } catch (e: any) {
       toast.error(e.message || "Something went wrong");
@@ -93,11 +118,15 @@ export default function Auth() {
               {mode === "login" && "Welcome back"}
               {mode === "signup" && "Create your account"}
               {mode === "forgot" && "Reset your password"}
+              {mode === "verify" && "Enter verification code"}
+              {mode === "newpass" && "Set a new password"}
             </h2>
             <p className="text-muted-foreground text-sm mt-1">
               {mode === "login" && "Sign in to continue to FinTask"}
               {mode === "signup" && "Start tracking your finances in seconds"}
-              {mode === "forgot" && "We'll email you a reset link"}
+              {mode === "forgot" && "We'll email you a 6-digit code"}
+              {mode === "verify" && `Enter the 6-digit code sent to ${email}`}
+              {mode === "newpass" && "Choose a strong password you'll remember"}
             </p>
           </div>
 
@@ -108,36 +137,49 @@ export default function Auth() {
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" />
               </div>
             )}
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
-            </div>
-            {mode !== "forgot" && (
+            {(mode === "login" || mode === "signup" || mode === "forgot") && (
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+              </div>
+            )}
+            {(mode === "login" || mode === "signup") && (
               <div>
                 <Label htmlFor="password">Password</Label>
                 <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
             )}
+            {mode === "verify" && (
+              <div className="flex justify-center py-2">
+                <InputOTP maxLength={6} value={code} onChange={setCode} inputMode="numeric" pattern="[0-9]*">
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+            )}
+            {mode === "newpass" && (
+              <div>
+                <Label htmlFor="newpw">New password</Label>
+                <Input id="newpw" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Please wait…" : mode === "login" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"}
+              {loading ? "Please wait…" :
+                mode === "login" ? "Sign in" :
+                mode === "signup" ? "Create account" :
+                mode === "forgot" ? "Send code" :
+                mode === "verify" ? "Verify code" :
+                "Update password"}
             </Button>
           </form>
 
-          {/* Google OAuth — temporarily disabled
-          {mode !== "forgot" && (
-            <>
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">or</span>
-                </div>
-              </div>
-              <Button type="button" variant="outline" className="w-full" onClick={google}>
-                Continue with Google
-              </Button>
-            </>
-          )}
-          */}
+          {/* Google OAuth — temporarily disabled */}
 
           <div className="text-sm text-center text-muted-foreground space-y-1">
             {mode === "login" && (
@@ -148,6 +190,12 @@ export default function Auth() {
             )}
             {mode === "signup" && <p>Already have an account? <button className="text-primary hover:underline" onClick={() => setMode("login")}>Sign in</button></p>}
             {mode === "forgot" && <p><button className="text-primary hover:underline" onClick={() => setMode("login")}>Back to sign in</button></p>}
+            {mode === "verify" && (
+              <>
+                <p><button className="text-primary hover:underline" onClick={() => setMode("forgot")}>Resend code</button></p>
+                <p><button className="text-primary hover:underline" onClick={() => setMode("login")}>Back to sign in</button></p>
+              </>
+            )}
           </div>
         </div>
       </div>
