@@ -125,8 +125,6 @@ export default function Auth() {
                 <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
             )}
-          </form>
-
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Please wait…" :
                 mode === "login" ? "Sign in" :
@@ -134,7 +132,6 @@ export default function Auth() {
                 "Send reset link"}
             </Button>
           </form>
-
 
           {/* Google OAuth — temporarily disabled */}
 
@@ -147,12 +144,6 @@ export default function Auth() {
             )}
             {mode === "signup" && <p>Already have an account? <button className="text-primary hover:underline" onClick={() => setMode("login")}>Sign in</button></p>}
             {mode === "forgot" && <p><button className="text-primary hover:underline" onClick={() => setMode("login")}>Back to sign in</button></p>}
-            {mode === "verify" && (
-              <>
-                <p><button className="text-primary hover:underline" onClick={() => setMode("forgot")}>Resend code</button></p>
-                <p><button className="text-primary hover:underline" onClick={() => setMode("login")}>Back to sign in</button></p>
-              </>
-            )}
           </div>
         </div>
       </div>
