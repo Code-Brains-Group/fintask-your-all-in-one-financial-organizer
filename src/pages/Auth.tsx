@@ -125,35 +125,16 @@ export default function Auth() {
                 <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
             )}
-            {mode === "verify" && (
-              <div className="flex justify-center py-2">
-                <InputOTP maxLength={6} value={code} onChange={setCode} inputMode="numeric" pattern="[0-9]*">
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
-            )}
-            {mode === "newpass" && (
-              <div>
-                <Label htmlFor="newpw">New password</Label>
-                <Input id="newpw" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
-              </div>
-            )}
+          </form>
+
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Please wait…" :
                 mode === "login" ? "Sign in" :
                 mode === "signup" ? "Create account" :
-                mode === "forgot" ? "Send code" :
-                mode === "verify" ? "Verify code" :
-                "Update password"}
+                "Send reset link"}
             </Button>
           </form>
+
 
           {/* Google OAuth — temporarily disabled */}
 
