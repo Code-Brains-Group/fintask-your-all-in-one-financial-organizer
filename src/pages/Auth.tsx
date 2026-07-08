@@ -5,7 +5,7 @@ import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+
 import { toast } from "sonner";
 import { Wallet } from "lucide-react";
 
@@ -20,7 +20,7 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [code, setCode] = useState("");
+  
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
