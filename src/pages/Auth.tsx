@@ -9,7 +9,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { toast } from "sonner";
 import { Wallet } from "lucide-react";
 
-type Mode = "login" | "signup" | "forgot" | "verify" | "newpass";
+type Mode = "login" | "signup" | "forgot";
 
 export default function Auth() {
   const [params] = useSearchParams();
@@ -53,32 +53,12 @@ export default function Auth() {
         if (error) throw error;
         navigate("/");
       } else if (mode === "forgot") {
-        // Send a 6-digit OTP code (default email includes {{ .Token }})
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: { shouldCreateUser: false },
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
         });
         if (error) throw error;
-        toast.success("We sent a 6-digit code to your email");
-        setCode("");
-        setMode("verify");
-      } else if (mode === "verify") {
-        if (code.length !== 6) throw new Error("Enter the 6-digit code");
-        const { error } = await supabase.auth.verifyOtp({
-          email,
-          token: code,
-          type: "email",
-        });
-        if (error) throw error;
-        toast.success("Code verified — set your new password");
-        setPassword("");
-        setMode("newpass");
-      } else if (mode === "newpass") {
-        if (password.length < 6) throw new Error("Password must be at least 6 characters");
-        const { error } = await supabase.auth.updateUser({ password });
-        if (error) throw error;
-        toast.success("Password updated");
-        navigate("/");
+        toast.success("Check your email for a password reset link");
+        setMode("login");
       }
     } catch (e: any) {
       toast.error(e.message || "Something went wrong");
@@ -118,15 +98,11 @@ export default function Auth() {
               {mode === "login" && "Welcome back"}
               {mode === "signup" && "Create your account"}
               {mode === "forgot" && "Reset your password"}
-              {mode === "verify" && "Enter verification code"}
-              {mode === "newpass" && "Set a new password"}
             </h2>
             <p className="text-muted-foreground text-sm mt-1">
               {mode === "login" && "Sign in to continue to FinTask"}
               {mode === "signup" && "Start tracking your finances in seconds"}
-              {mode === "forgot" && "We'll email you a 6-digit code"}
-              {mode === "verify" && `Enter the 6-digit code sent to ${email}`}
-              {mode === "newpass" && "Choose a strong password you'll remember"}
+              {mode === "forgot" && "We'll email you a link to reset it"}
             </p>
           </div>
 
