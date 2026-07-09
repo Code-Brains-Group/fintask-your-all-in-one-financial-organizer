@@ -302,6 +302,48 @@ export type Database = {
           },
         ]
       }
+      custom_reports: {
+        Row: {
+          config: Json
+          created_at: string
+          description: string | null
+          emoji: string
+          id: string
+          is_pinned: boolean
+          name: string
+          share_expires_at: string | null
+          share_token: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          description?: string | null
+          emoji?: string
+          id?: string
+          is_pinned?: boolean
+          name: string
+          share_expires_at?: string | null
+          share_token?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          description?: string | null
+          emoji?: string
+          id?: string
+          is_pinned?: boolean
+          name?: string
+          share_expires_at?: string | null
+          share_token?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       group_invites: {
         Row: {
           active: boolean
@@ -1097,6 +1139,33 @@ export type Database = {
           },
         ]
       }
+      user_layouts: {
+        Row: {
+          created_at: string
+          id: string
+          surface: string
+          updated_at: string
+          user_id: string
+          widgets: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          surface: string
+          updated_at?: string
+          user_id: string
+          widgets?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          surface?: string
+          updated_at?: string
+          user_id?: string
+          widgets?: Json
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1186,6 +1255,17 @@ export type Database = {
           group_id: string
           group_kind: string
           group_name: string
+        }[]
+      }
+      get_shared_report: {
+        Args: { _token: string }
+        Returns: {
+          config: Json
+          description: string
+          emoji: string
+          id: string
+          name: string
+          owner_name: string
         }[]
       }
       has_role: {

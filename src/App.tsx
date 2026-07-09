@@ -25,6 +25,10 @@ import Help from "./pages/Help";
 import Admin from "./pages/Admin";
 import Learning from "./pages/Learning";
 import LearningDetail from "./pages/LearningDetail";
+import CustomReports from "./pages/CustomReports";
+import CustomReportBuilder from "./pages/CustomReportBuilder";
+import CustomReportView from "./pages/CustomReportView";
+import SharedReport from "./pages/SharedReport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +44,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/join/:code" element={<JoinGroup />} />
+            <Route path="/r/:token" element={<SharedReport />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/groups" element={<Groups />} />
               <Route path="/groups/:id" element={<GroupDetail />} />
@@ -49,6 +54,10 @@ const App = () => (
               <Route path="/finance/savings" element={<Savings />} />
               <Route path="/finance/recurring" element={<Recurring />} />
               <Route path="/finance/reports" element={<Reports />} />
+              <Route path="/finance/reports/custom" element={<CustomReports />} />
+              <Route path="/finance/reports/custom/new" element={<CustomReportBuilder />} />
+              <Route path="/finance/reports/custom/:id" element={<CustomReportView />} />
+              <Route path="/finance/reports/custom/:id/edit" element={<CustomReportBuilder />} />
               <Route path="/finance/insights" element={<Insights />} />
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/tasks/board" element={<Tasks />} />
