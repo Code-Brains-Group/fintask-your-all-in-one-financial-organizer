@@ -5,7 +5,7 @@ import { fmtKES, fmtDate } from "@/lib/finance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { TrendingUp, TrendingDown, Wallet, Receipt, CheckCircle2, Plus, Repeat, Check, X, Sparkles } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Receipt, CheckCircle2, Plus, Repeat, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import {
@@ -13,7 +13,6 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, Legend
 } from "recharts";
 import { Button } from "@/components/ui/button";
-import ReportRenderer from "@/components/reports/ReportRenderer";
 
 const COLORS = ["#0175C2", "#34A853", "#F4A900", "#EA4335", "#7B61FF", "#00B8D9", "#FF6B6B", "#9333EA"];
 
