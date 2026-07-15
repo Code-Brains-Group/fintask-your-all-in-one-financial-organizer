@@ -6,10 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DateFilter } from "@/components/DateFilter";
 import { DateShortcut, DateRange, inRange, rangeFor } from "@/lib/dateFilters";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, Legend, PieChart, Pie, Cell } from "recharts";
-import { Download, Lock, FileText, Trash2, RotateCcw } from "lucide-react";
+import { Download, Eye, EyeOff, Lock, RotateCcw, ShieldCheck } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { downloadMonthReport, buildInsights, buildTips, MonthReport } from "@/lib/pdf";
@@ -23,6 +24,10 @@ export default function Reports() {
   const [closed, setClosed] = useState<any[]>([]);
   const [profileName, setProfileName] = useState<string>("");
   const [closeMonth, setCloseMonth] = useState<string>(""); // YYYY-MM
+  const [pendingPdf, setPendingPdf] = useState<MonthReport | null>(null);
+  const [pdfPassword, setPdfPassword] = useState("");
+  const [showPdfPassword, setShowPdfPassword] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [filter, setFilter] = useState<{ shortcut: DateShortcut; range: DateRange; custom?: any }>({ shortcut: "month", range: rangeFor("month", undefined, fiscal) });
 
   const loadAll = async () => {
@@ -145,7 +150,9 @@ export default function Reports() {
       insights: s.insights || [],
       nextMonthTips: s.nextMonthTips || [],
     };
-    downloadMonthReport(report);
+    setPendingPdf(report);
+    setPdfPassword("");
+    setShowPdfPassword(false);
   };
 
   const reopen = async (c: any) => {
@@ -173,7 +180,38 @@ export default function Reports() {
       insights: buildInsights(income, expense, byCat),
       nextMonthTips: buildTips(income, expense, byCat),
     };
-    downloadMonthReport(report);
+    setPendingPdf(report);
+    setPdfPassword("");
+    setShowPdfPassword(false);
+  };
+
+  const closePdfDialog = () => {
+    if (exportingPdf) return;
+    setPendingPdf(null);
+    setPdfPassword("");
+    setShowPdfPassword(false);
+  };
+
+  const exportProtectedPdf = async () => {
+    if (!pendingPdf || !user?.email) return;
+    if (!pdfPassword) { toast.error("Enter your current login password"); return; }
+    setExportingPdf(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: pdfPassword });
+      if (error) {
+        toast.error(error.status === 400 ? "That does not match your current login password" : error.message);
+        return;
+      }
+      downloadMonthReport(pendingPdf, pdfPassword);
+      toast.success("Encrypted PDF downloaded");
+      setPendingPdf(null);
+      setPdfPassword("");
+      setShowPdfPassword(false);
+    } catch (error: any) {
+      toast.error(error?.message || "The PDF could not be generated");
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   return (
@@ -182,7 +220,7 @@ export default function Reports() {
         <h1 className="text-2xl font-bold">Reports</h1>
         <div className="flex gap-2 flex-wrap items-center">
           <Button variant="outline" onClick={exportReport}><Download className="h-4 w-4 mr-1" /> Excel</Button>
-          <Button variant="outline" onClick={downloadCurrentPdf}><FileText className="h-4 w-4 mr-1" /> PDF (current view)</Button>
+          <Button variant="outline" onClick={downloadCurrentPdf}><ShieldCheck className="h-4 w-4 mr-1" /> PDF (current view)</Button>
           <div className="flex items-center gap-2 rounded-md border px-2 py-1 bg-card">
             <Input type="month" value={closeMonth} max={currentMonth.period} onChange={(e) => setCloseMonth(e.target.value)} className="h-8 w-40 border-0 p-1 focus-visible:ring-0" />
             <Button size="sm" onClick={closeSelectedMonth} disabled={alreadyClosed}>
@@ -256,7 +294,7 @@ export default function Reports() {
                       </div>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => downloadClosedPdf(c)}>
-                          <FileText className="h-4 w-4 mr-1" /> PDF
+                          <ShieldCheck className="h-4 w-4 mr-1" /> PDF
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => reopen(c)}>
                           <RotateCcw className="h-4 w-4 mr-1" /> Reopen
@@ -292,6 +330,32 @@ export default function Reports() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!pendingPdf} onOpenChange={(value) => { if (!value) closePdfDialog(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /> Protect your financial statement</DialogTitle>
+            <DialogDescription>This PDF will require your current FinTask login password whenever it is opened.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+              FinTask cannot read your saved password. Enter it below to confirm your identity and encrypt the file locally. It is never stored.
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="pdf-login-password" className="text-sm font-medium">Current login password</label>
+              <div className="relative">
+                <Input id="pdf-login-password" type={showPdfPassword ? "text" : "password"} value={pdfPassword} onChange={(event) => setPdfPassword(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") exportProtectedPdf(); }} placeholder="Enter your FinTask password" autoComplete="current-password" className="h-11 pr-11" autoFocus />
+                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1 h-9 w-9" onClick={() => setShowPdfPassword((value) => !value)} aria-label={showPdfPassword ? "Hide password" : "Show password"}>{showPdfPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5 text-success" /> Only printing is permitted after the document is unlocked.</div>
+            <DialogFooter>
+              <Button variant="outline" onClick={closePdfDialog} disabled={exportingPdf}>Cancel</Button>
+              <Button onClick={exportProtectedPdf} disabled={exportingPdf || !pdfPassword}>{exportingPdf ? "Confirming…" : <><Lock className="h-4 w-4 mr-1.5" /> Encrypt & download</>}</Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

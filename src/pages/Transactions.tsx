@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { DateFilter } from "@/components/DateFilter";
 import { DateShortcut, DateRange, inRange } from "@/lib/dateFilters";
+import { MpesaImportDialog } from "@/components/MpesaImportDialog";
 
 export default function Transactions() {
   const { user } = useAuth();
@@ -87,6 +88,7 @@ export default function Transactions() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportExcel}><Download className="h-4 w-4 mr-1" /> Export</Button>
+          <MpesaImportDialog wallets={wallets} categories={categories} existingTransactions={txs} onSaved={load} />
           <TxSheet wallets={wallets} categories={categories} tiers={tiers} tasks={tasks} onSaved={load} />
         </div>
       </div>

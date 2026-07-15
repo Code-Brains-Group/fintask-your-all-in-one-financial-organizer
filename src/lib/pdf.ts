@@ -1,4 +1,4 @@
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { fmtKES, fmtDate } from "./finance";
 
@@ -37,8 +37,17 @@ const sanitize = (s: string) =>
 
 const money = (n: number) => sanitize(fmtKES(n));
 
-export function downloadMonthReport(r: MonthReport) {
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
+export function downloadMonthReport(r: MonthReport, password: string) {
+  if (!password) throw new Error("A password is required to protect this PDF.");
+  const doc = new jsPDF({
+    unit: "pt",
+    format: "a4",
+    encryption: {
+      userPassword: password,
+      ownerPassword: `${password}:fintask-owner`,
+      userPermissions: ["print"],
+    },
+  });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
 
@@ -48,26 +57,33 @@ export function downloadMonthReport(r: MonthReport) {
   const genDate = fmtDate(gen);
   const genTime = gen.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
-  // Header band
-  doc.setFillColor(1, 117, 194);
-  doc.rect(0, 0, W, 76, "F");
-  doc.setTextColor(255);
-  doc.setFontSize(20); doc.setFont("helvetica", "bold");
-  doc.text("FinTask Monthly Report", 32, 34);
-  doc.setFontSize(12); doc.setFont("helvetica", "normal");
-  doc.text(periodLabel, 32, 56);
+  // Statement-style masthead, inspired by the compact hierarchy of an M-PESA statement.
+  doc.setDrawColor(35, 166, 52);
+  doc.setLineWidth(1.2);
+  doc.line(32, 34, W - 32, 34);
+  doc.setTextColor(35, 166, 52);
+  doc.setFontSize(21); doc.setFont("helvetica", "bold");
+  doc.text("FINTASK MONTHLY STATEMENT", W / 2, 66, { align: "center" });
+  doc.setFontSize(10); doc.setFont("helvetica", "normal");
+  doc.setTextColor(95);
+  doc.text("A clear record of your month in money", W / 2, 82, { align: "center" });
 
-  // Meta block
-  doc.setTextColor(80);
-  doc.setFontSize(10);
-  doc.text(`Prepared for: ${generatedBy}`, 32, 100);
-  doc.text(`Generated on ${genDate} at ${genTime}`, 32, 116);
-  doc.text(`Total transactions this month: ${r.txCount}`, 32, 132);
+  doc.setFillColor(245, 251, 246);
+  doc.roundedRect(32, 102, W - 64, 58, 5, 5, "F");
+  doc.setFontSize(9); doc.setTextColor(35, 166, 52); doc.setFont("helvetica", "bold");
+  doc.text("PREPARED FOR", 46, 120);
+  doc.text("STATEMENT PERIOD", W / 2 + 12, 120);
+  doc.setFontSize(11); doc.setTextColor(35); doc.setFont("helvetica", "normal");
+  doc.text(generatedBy, 46, 139);
+  doc.text(periodLabel, W / 2 + 12, 139);
+  doc.setFontSize(8); doc.setTextColor(105);
+  doc.text(`Generated ${genDate} at ${genTime}`, 46, 152);
+  doc.text(`${r.txCount} recorded transactions`, W / 2 + 12, 152);
 
   // Summary table
   autoTable(doc, {
-    startY: 152,
-    head: [["Summary", "Amount"]],
+    startY: 184,
+    head: [["MONTHLY SUMMARY", "AMOUNT"]],
     body: [
       ["Total income", money(r.income)],
       ["Total expenses", money(r.expense)],
@@ -75,7 +91,8 @@ export function downloadMonthReport(r: MonthReport) {
       [r.net >= 0 ? "Net savings" : "Net shortfall", money(r.net)],
     ],
     theme: "grid",
-    headStyles: { fillColor: [1, 117, 194], textColor: 255, fontStyle: "bold" },
+    headStyles: { fillColor: [35, 166, 52], textColor: 255, fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [245, 251, 246] },
     styles: { fontSize: 10, cellPadding: 6 },
     columnStyles: { 1: { halign: "right" } },
   });
@@ -83,7 +100,7 @@ export function downloadMonthReport(r: MonthReport) {
   // Category breakdown
   const catStart = (doc as any).lastAutoTable.finalY + 24;
   doc.setTextColor(30); doc.setFontSize(13); doc.setFont("helvetica", "bold");
-  doc.text("Where your money went", 32, catStart);
+  doc.text("SPENDING BREAKDOWN", 32, catStart);
   autoTable(doc, {
     startY: catStart + 10,
     head: [["Category", "Amount spent", "Share of expenses"]],
@@ -95,7 +112,7 @@ export function downloadMonthReport(r: MonthReport) {
         ])
       : [["No expenses recorded for this month", "-", "-"]],
     theme: "striped",
-    headStyles: { fillColor: [52, 168, 83], textColor: 255, fontStyle: "bold" },
+    headStyles: { fillColor: [35, 166, 52], textColor: 255, fontStyle: "bold" },
     styles: { fontSize: 10, cellPadding: 6 },
     columnStyles: { 1: { halign: "right" }, 2: { halign: "right" } },
   });
@@ -117,13 +134,13 @@ export function downloadMonthReport(r: MonthReport) {
 
   let y = (doc as any).lastAutoTable.finalY + 28;
   y = writeSection(
-    "Highlights from this month",
+    "MONTH HIGHLIGHTS",
     r.insights.length ? r.insights : ["No standout patterns to report this month."],
     "-",
     y,
   );
   y = writeSection(
-    "Recommendations for next month",
+    "NEXT MONTH FOCUS",
     r.nextMonthTips.length ? r.nextMonthTips : ["Keep tracking your spending consistently to build a clearer picture."],
     ">",
     y,
@@ -133,7 +150,9 @@ export function downloadMonthReport(r: MonthReport) {
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
-    doc.setFontSize(8); doc.setTextColor(140);
+    doc.setDrawColor(35, 166, 52); doc.setLineWidth(0.6);
+    doc.line(32, H - 34, W - 32, H - 34);
+    doc.setFontSize(8); doc.setTextColor(120);
     doc.text(
       `FinTask - ${periodLabel} - Confidential - Page ${i} of ${pages}`,
       32,
