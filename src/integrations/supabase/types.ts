@@ -456,6 +456,39 @@ export type Database = {
         }
         Relationships: []
       }
+      income_plans: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          period: string
+          strategy: string
+          total_income: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          period: string
+          strategy?: string
+          total_income?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          period?: string
+          strategy?: string
+          total_income?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       learning_deliverables: {
         Row: {
           created_at: string
@@ -675,6 +708,60 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      plan_allocations: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          label: string | null
+          percent: number
+          plan_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string | null
+          percent?: number
+          plan_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string | null
+          percent?: number
+          plan_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_allocations_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_allocations_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "income_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

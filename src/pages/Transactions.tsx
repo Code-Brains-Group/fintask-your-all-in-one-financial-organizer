@@ -29,20 +29,30 @@ export default function Transactions() {
   const [walletFilter, setWalletFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState<{ shortcut: DateShortcut; range: DateRange; custom?: any }>({ shortcut: "all", range: null });
   const [loading, setLoading] = useState(true);
+  const [plan, setPlan] = useState<any>(null);
+  const [allocs, setAllocs] = useState<any[]>([]);
 
   const load = async () => {
     if (!user) return;
-    const [tx, w, c, t, tk] = await Promise.all([
+    const period = new Date().toISOString().slice(0, 7);
+    const [tx, w, c, t, tk, pl] = await Promise.all([
       supabase.from("transactions").select("*").eq("user_id", user.id).order("date", { ascending: false }),
       supabase.from("wallets").select("*").eq("user_id", user.id),
       supabase.from("categories").select("*").eq("user_id", user.id),
       supabase.from("cost_tiers").select("*").eq("is_global", true),
       supabase.from("tasks").select("id, title").eq("user_id", user.id),
+      supabase.from("income_plans").select("*").eq("user_id", user.id).eq("period", period).maybeSingle(),
     ]);
     setTxs(tx.data || []); setWallets(w.data || []); setCategories(c.data || []);
     setTiers((t.data || []) as Tier[]); setTasks(tk.data || []);
+    setPlan(pl.data || null);
+    if (pl.data) {
+      const a = await supabase.from("plan_allocations").select("*").eq("plan_id", pl.data.id);
+      setAllocs(a.data || []);
+    } else setAllocs([]);
     setLoading(false);
   };
+
 
   useEffect(() => { load(); }, [user]);
 
@@ -89,7 +99,7 @@ export default function Transactions() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportExcel}><Download className="h-4 w-4 mr-1" /> Export</Button>
           <MpesaImportDialog wallets={wallets} categories={categories} existingTransactions={txs} onSaved={load} />
-          <TxSheet wallets={wallets} categories={categories} tiers={tiers} tasks={tasks} onSaved={load} />
+          <TxSheet wallets={wallets} categories={categories} tiers={tiers} tasks={tasks} plan={plan} allocs={allocs} allTxs={txs} onSaved={load} />
         </div>
       </div>
 
@@ -163,7 +173,7 @@ export default function Transactions() {
                       <td className="px-4 py-2.5 text-right text-muted-foreground">{Number(t.fee) > 0 ? fmtKES(t.fee) : "—"}</td>
                       <td className="px-4 py-2.5"><Badge variant="outline" className="capitalize">{t.type}</Badge></td>
                       <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                        <TxSheet wallets={wallets} categories={categories} tiers={tiers} tasks={tasks} tx={t} onSaved={load}
+                        <TxSheet wallets={wallets} categories={categories} tiers={tiers} tasks={tasks} plan={plan} allocs={allocs} allTxs={txs} tx={t} onSaved={load}
                           trigger={<Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button>} />
                         <Button size="icon" variant="ghost" onClick={() => remove(t.id)}><Trash2 className="h-4 w-4" /></Button>
                       </td>
@@ -179,7 +189,7 @@ export default function Transactions() {
   );
 }
 
-function TxSheet({ wallets, categories, tiers, tasks, tx, onSaved, trigger }: any) {
+function TxSheet({ wallets, categories, tiers, tasks, tx, plan, allocs, allTxs, onSaved, trigger }: any) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<"income" | "expense" | "transfer">(tx?.type || "expense");
@@ -211,6 +221,30 @@ function TxSheet({ wallets, categories, tiers, tasks, tx, onSaved, trigger }: an
   const filteredCats = categories.filter((c: any) => c.type === type || type === "transfer");
   const selectedCat = categories.find((c: any) => c.id === categoryId);
   const isOtherCat = !!selectedCat && /other/i.test(selectedCat.name || "");
+
+  // Live envelope impact from the monthly planner
+  const planPeriod: string | undefined = plan?.period;
+  const alloc = allocs?.find((a: any) => a.category_id && a.category_id === categoryId);
+  const inPlanMonth = !!planPeriod && String(date).slice(0, 7) === planPeriod;
+  const envelope = (() => {
+    if (!plan || !inPlanMonth || type !== "expense") return null;
+    const monthTxs = (allTxs || []).filter((t: any) =>
+      t.type === "expense" && String(t.date).slice(0, 7) === planPeriod && (!tx || t.id !== tx.id));
+    const spentAll = monthTxs.reduce((s: number, t: any) => s + Number(t.amount) + Number(t.fee || 0), 0);
+    const cost = Number(amount || 0) + Number(fee || 0);
+    const earnings = Number(plan.total_income) || 0;
+    const envSpent = alloc
+      ? monthTxs.filter((t: any) => t.category_id === categoryId).reduce((s: number, t: any) => s + Number(t.amount) + Number(t.fee || 0), 0)
+      : 0;
+    return {
+      label: alloc?.label || selectedCat?.name || "this category",
+      hasEnvelope: !!alloc,
+      envLeft: alloc ? Number(alloc.amount) - envSpent - cost : 0,
+      earningsLeft: earnings - spentAll - cost,
+      cost,
+    };
+  })();
+
 
   const submit = async () => {
     if (!description || !amount || !walletId) { toast.error("Fill required fields"); return; }
@@ -262,6 +296,20 @@ function TxSheet({ wallets, categories, tiers, tasks, tx, onSaved, trigger }: an
               )}
             </div>
           )}
+          {envelope && categoryId && Number(amount) > 0 && (
+            <div className={`rounded-lg border p-3 text-sm space-y-1 ${envelope.hasEnvelope && envelope.envLeft < 0 ? "border-danger/40 bg-danger/5" : "border-primary/30 bg-primary/[0.04]"}`}>
+              <div className="font-medium">Planner impact</div>
+              {envelope.hasEnvelope ? (
+                <div>{envelope.label} envelope: <span className={envelope.envLeft < 0 ? "text-danger font-semibold" : "text-success font-semibold"}>
+                  {envelope.envLeft < 0 ? `over by ${fmtKES(Math.abs(envelope.envLeft))}` : `${fmtKES(envelope.envLeft)} left`}
+                </span> after this.</div>
+              ) : (
+                <div className="text-muted-foreground">No envelope set for this category yet.</div>
+              )}
+              <div>Monthly earnings: <span className={envelope.earningsLeft < 0 ? "text-danger font-semibold" : "font-semibold"}>{fmtKES(envelope.earningsLeft)}</span> remaining.</div>
+            </div>
+          )}
+
           <div><Label>{type === "transfer" ? "From wallet" : "Wallet"}</Label>
             <Select value={walletId} onValueChange={setWalletId}>
               <SelectTrigger><SelectValue placeholder="Select wallet" /></SelectTrigger>

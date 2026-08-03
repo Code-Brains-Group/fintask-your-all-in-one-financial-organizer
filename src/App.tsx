@@ -13,6 +13,7 @@ import Transactions from "./pages/Transactions";
 import Tasks from "./pages/Tasks";
 import Settings from "./pages/Settings";
 import Budgets from "./pages/Budgets";
+import Planner from "./pages/Planner";
 import Savings from "./pages/Savings";
 import Recurring from "./pages/Recurring";
 import Reports from "./pages/Reports";
@@ -51,6 +52,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/finance/transactions" element={<Transactions />} />
               <Route path="/finance/budgets" element={<Budgets />} />
+              <Route path="/finance/planner" element={<Planner />} />
               <Route path="/finance/savings" element={<Savings />} />
               <Route path="/finance/recurring" element={<Recurring />} />
               <Route path="/finance/reports" element={<Reports />} />
