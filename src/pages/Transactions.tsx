@@ -99,7 +99,7 @@ export default function Transactions() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportExcel}><Download className="h-4 w-4 mr-1" /> Export</Button>
           <MpesaImportDialog wallets={wallets} categories={categories} existingTransactions={txs} onSaved={load} />
-          <TxSheet wallets={wallets} categories={categories} tiers={tiers} tasks={tasks} onSaved={load} />
+          <TxSheet wallets={wallets} categories={categories} tiers={tiers} tasks={tasks} plan={plan} allocs={allocs} allTxs={txs} onSaved={load} />
         </div>
       </div>
 
@@ -173,7 +173,7 @@ export default function Transactions() {
                       <td className="px-4 py-2.5 text-right text-muted-foreground">{Number(t.fee) > 0 ? fmtKES(t.fee) : "—"}</td>
                       <td className="px-4 py-2.5"><Badge variant="outline" className="capitalize">{t.type}</Badge></td>
                       <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                        <TxSheet wallets={wallets} categories={categories} tiers={tiers} tasks={tasks} tx={t} onSaved={load}
+                        <TxSheet wallets={wallets} categories={categories} tiers={tiers} tasks={tasks} plan={plan} allocs={allocs} allTxs={txs} tx={t} onSaved={load}
                           trigger={<Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button>} />
                         <Button size="icon" variant="ghost" onClick={() => remove(t.id)}><Trash2 className="h-4 w-4" /></Button>
                       </td>
@@ -189,7 +189,7 @@ export default function Transactions() {
   );
 }
 
-function TxSheet({ wallets, categories, tiers, tasks, tx, onSaved, trigger }: any) {
+function TxSheet({ wallets, categories, tiers, tasks, tx, plan, allocs, allTxs, onSaved, trigger }: any) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<"income" | "expense" | "transfer">(tx?.type || "expense");
