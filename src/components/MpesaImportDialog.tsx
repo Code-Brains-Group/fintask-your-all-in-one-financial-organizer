@@ -250,32 +250,72 @@ export function MpesaImportDialog({ wallets, categories, existingTransactions, o
               <Summary label="Paid out" value={fmtKES(paidOut)} />
               <Summary label="Charges awaiting choice" value={String(charges)} warning={charges > 0} />
             </div>
-            <div className="grid grid-rows-[180px_minmax(0,1fr)] lg:grid-rows-1 lg:grid-cols-[minmax(280px,0.8fr)_minmax(420px,1.2fr)] gap-3 lg:gap-4 h-[calc(95dvh-225px)] sm:h-[calc(92vh-215px)] min-h-0">
+            <div className="grid grid-rows-[260px_minmax(0,1fr)] lg:grid-rows-1 lg:grid-cols-[minmax(300px,0.9fr)_minmax(420px,1.1fr)] gap-3 lg:gap-4 h-[calc(95dvh-225px)] sm:h-[calc(92vh-215px)] min-h-0">
               <div className="border rounded-2xl min-h-0 flex flex-col overflow-hidden bg-card shadow-sm">
-                <div className="p-3.5 border-b bg-muted/20 flex items-center justify-between">
-                  <div><div className="font-semibold text-sm">Statement transactions</div><div className="text-xs text-muted-foreground">Select a row to edit and add it</div></div>
-                  <Button variant="ghost" size="sm" onClick={reset}>New PDF</Button>
+                <div className="p-3 border-b bg-muted/20 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div><div className="font-semibold text-sm">Statement transactions</div><div className="text-xs text-muted-foreground">Tick rows to add several at once</div></div>
+                    <Button variant="ghost" size="sm" onClick={reset}>New PDF</Button>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                      <Checkbox checked={picked.length > 0 && picked.length === drafts.length}
+                        onCheckedChange={(value) => setPicked(value ? drafts.map((draft) => draft.id) : [])} />
+                      Select all ({drafts.length})
+                    </label>
+                    {picked.length > 0 && <button className="text-xs text-muted-foreground underline" onClick={() => setPicked([])}>Clear</button>}
+                  </div>
+                  {picked.length > 0 && (
+                    <div className="rounded-xl border border-primary/30 bg-primary/[0.05] p-2.5 space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-primary"><Layers className="h-3.5 w-3.5" /> Bulk edit {picked.length} selected</div>
+                      <Select value="" onValueChange={(walletId) => applyToPicked({ walletId })}>
+                        <SelectTrigger className="h-8 text-xs bg-background"><SelectValue placeholder="Set wallet for all selected" /></SelectTrigger>
+                        <SelectContent>{wallets.map((wallet: any) => <SelectItem key={wallet.id} value={wallet.id}>{wallet.name}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Select value="" onValueChange={(categoryId) => {
+                        const category = categories.find((item: any) => item.id === categoryId);
+                        setDrafts((current) => current.map((draft) => picked.includes(draft.id) && draft.type === category?.type ? { ...draft, categoryId } : draft));
+                      }}>
+                        <SelectTrigger className="h-8 text-xs bg-background"><SelectValue placeholder="Set category (matching type)" /></SelectTrigger>
+                        <SelectContent>{categories.map((category: any) => <SelectItem key={category.id} value={category.id}>{category.icon} {category.name} · {category.type}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
                 <ScrollArea className="flex-1">
                   <div className="p-2 space-y-1">
-                    {drafts.map((draft) => (
-                      <button key={draft.id} onClick={() => setSelectedId(draft.id)} className={`w-full text-left rounded-xl border p-3 transition-all ${selected?.id === draft.id ? "border-primary bg-primary/[0.07] shadow-sm ring-1 ring-primary/10" : "border-transparent bg-muted/20 hover:border-border hover:bg-muted/50"}`}>
-                        <div className="flex justify-between gap-2">
-                          <span className="text-xs text-muted-foreground">{draft.date} · {draft.time}</span>
-                          <span className={`text-sm font-semibold ${draft.amount > 0 ? "text-success" : "text-danger"}`}>{fmtKES(Math.abs(draft.amount))}</span>
+                    {drafts.map((draft) => {
+                      const issue = draftIssue(draft);
+                      return (
+                        <div key={draft.id} className={`flex gap-2 rounded-xl border p-2.5 transition-all ${selected?.id === draft.id ? "border-primary bg-primary/[0.07] shadow-sm ring-1 ring-primary/10" : "border-transparent bg-muted/20 hover:border-border hover:bg-muted/50"}`}>
+                          <Checkbox className="mt-1" checked={picked.includes(draft.id)} onCheckedChange={() => togglePicked(draft.id)} />
+                          <button onClick={() => setSelectedId(draft.id)} className="flex-1 min-w-0 text-left">
+                            <div className="flex justify-between gap-2">
+                              <span className="text-xs text-muted-foreground">{draft.date} · {draft.time}</span>
+                              <span className={`text-sm font-semibold ${draft.amount > 0 ? "text-success" : "text-danger"}`}>{fmtKES(Math.abs(draft.amount))}</span>
+                            </div>
+                            <div className="text-sm line-clamp-2 mt-1">{draft.description}</div>
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              <Badge variant="outline" className="text-[10px] capitalize">{draft.type}</Badge>
+                              <Badge variant="secondary" className="text-[10px]">{METHOD_LABELS[draft.method] || draft.method}</Badge>
+                              {draft.isCharge && <Badge className="text-[10px] bg-warning text-warning-foreground">Transaction cost</Badge>}
+                              {isPossibleDuplicate(draft) && <Badge variant="destructive" className="text-[10px]">Possible duplicate</Badge>}
+                              {issue && <Badge variant="outline" className="text-[10px] border-warning/50 text-warning">Needs {issue}</Badge>}
+                            </div>
+                          </button>
                         </div>
-                        <div className="text-sm line-clamp-2 mt-1">{draft.description}</div>
-                        <div className="flex gap-1 mt-2">
-                          <Badge variant="outline" className="text-[10px] capitalize">{draft.type}</Badge>
-                          <Badge variant="secondary" className="text-[10px]">{METHOD_LABELS[draft.method] || draft.method}</Badge>
-                          {draft.isCharge && <Badge className="text-[10px] bg-warning text-warning-foreground">Transaction cost</Badge>}
-                          {isPossibleDuplicate(draft) && <Badge variant="destructive" className="text-[10px]">Possible duplicate</Badge>}
-                        </div>
-                      </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </ScrollArea>
+                <div className="p-3 border-t bg-muted/10 flex items-center justify-between gap-2">
+                  <div className="text-xs text-muted-foreground">{picked.length ? `${picked.length} selected · ${fmtKES(pickedTotal)}` : "Nothing selected"}</div>
+                  <Button size="sm" onClick={savePicked} disabled={saving || !picked.length}>
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle2 className="h-4 w-4 mr-1.5" /> Add {picked.length || ""} selected</>}
+                  </Button>
+                </div>
               </div>
+
 
               {selected && <div className="border rounded-2xl min-h-0 flex flex-col overflow-hidden bg-card shadow-sm">
                 <div className="p-3.5 border-b bg-muted/20 flex items-center justify-between">
