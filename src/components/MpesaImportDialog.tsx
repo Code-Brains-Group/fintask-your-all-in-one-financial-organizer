@@ -75,6 +75,7 @@ export function MpesaImportDialog({ wallets, categories, existingTransactions, o
       setDrafts(next);
       setStatementTotal(next.length);
       setSelectedId(next[0]?.id || "");
+      setPicked(next.filter((draft) => !draft.isCharge).map((draft) => draft.id));
       toast.success(`${next.length} completed transactions found`);
     } catch (error: any) {
       const message = /password/i.test(error?.message || error?.name || "")
@@ -95,8 +96,63 @@ export function MpesaImportDialog({ wallets, categories, existingTransactions, o
     const index = drafts.findIndex((draft) => draft.id === id);
     const next = drafts.filter((draft) => draft.id !== id);
     setDrafts(next);
+    setPicked((current) => current.filter((value) => value !== id));
     if (selectedId === id) setSelectedId(next[Math.min(index, next.length - 1)]?.id || "");
   };
+
+  const togglePicked = (id: string) => setPicked((current) =>
+    current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
+
+  const pickedDrafts = drafts.filter((draft) => picked.includes(draft.id));
+  const pickedTotal = pickedDrafts.reduce((sum, draft) => sum + Math.abs(draft.amount), 0);
+
+  const draftIssue = (draft: Draft) => {
+    if (!draft.walletId) return "a wallet";
+    if (draft.type !== "transfer" && !draft.categoryId) return "a category";
+    if (draft.type === "transfer" && !draft.toWalletId) return "a destination wallet";
+    if (!draft.description.trim() || !draft.amount) return "a description and amount";
+    return null;
+  };
+
+  const applyToPicked = (patch: Partial<Draft>) => {
+    if (!picked.length) { toast.error("Select some transactions first"); return; }
+    setDrafts((current) => current.map((draft) => picked.includes(draft.id) ? { ...draft, ...patch } : draft));
+  };
+
+  const savePicked = async () => {
+    if (!user || !pickedDrafts.length) return;
+    const blocker = pickedDrafts.find((draft) => draft.issue !== undefined ? false : !!draftIssue(draft));
+    if (blocker) {
+      setSelectedId(blocker.id);
+      toast.error(`"${blocker.description.slice(0, 40)}" still needs ${draftIssue(blocker)}`);
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.from("transactions").insert(pickedDrafts.map((draft) => ({
+      user_id: user.id,
+      description: draft.description.trim(),
+      amount: Math.abs(draft.amount),
+      type: draft.type,
+      category_id: draft.type === "transfer" ? null : draft.categoryId,
+      wallet_id: draft.walletId,
+      to_wallet_id: draft.type === "transfer" ? draft.toWalletId : null,
+      date: draft.date,
+      method: draft.method,
+      fee: 0,
+      note: `Imported from M-PESA receipt ${draft.receipt} at ${draft.time}`,
+    })));
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    const ids = pickedDrafts.map((draft) => draft.id);
+    const next = drafts.filter((draft) => !ids.includes(draft.id));
+    setDrafts(next);
+    setPicked([]);
+    setSelectedId(next[0]?.id || "");
+    toast.success(`${ids.length} transactions added`);
+    onSaved();
+  };
+
+
 
   const saveSelected = async () => {
     if (!selected || !user) return;
