@@ -121,7 +121,7 @@ export function MpesaImportDialog({ wallets, categories, existingTransactions, o
 
   const savePicked = async () => {
     if (!user || !pickedDrafts.length) return;
-    const blocker = pickedDrafts.find((draft) => draft.issue !== undefined ? false : !!draftIssue(draft));
+    const blocker = pickedDrafts.find((draft) => !!draftIssue(draft));
     if (blocker) {
       setSelectedId(blocker.id);
       toast.error(`"${blocker.description.slice(0, 40)}" still needs ${draftIssue(blocker)}`);
