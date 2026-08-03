@@ -222,6 +222,30 @@ function TxSheet({ wallets, categories, tiers, tasks, tx, plan, allocs, allTxs, 
   const selectedCat = categories.find((c: any) => c.id === categoryId);
   const isOtherCat = !!selectedCat && /other/i.test(selectedCat.name || "");
 
+  // Live envelope impact from the monthly planner
+  const planPeriod: string | undefined = plan?.period;
+  const alloc = allocs?.find((a: any) => a.category_id && a.category_id === categoryId);
+  const inPlanMonth = !!planPeriod && String(date).slice(0, 7) === planPeriod;
+  const envelope = (() => {
+    if (!plan || !inPlanMonth || type !== "expense") return null;
+    const monthTxs = (allTxs || []).filter((t: any) =>
+      t.type === "expense" && String(t.date).slice(0, 7) === planPeriod && (!tx || t.id !== tx.id));
+    const spentAll = monthTxs.reduce((s: number, t: any) => s + Number(t.amount) + Number(t.fee || 0), 0);
+    const cost = Number(amount || 0) + Number(fee || 0);
+    const earnings = Number(plan.total_income) || 0;
+    const envSpent = alloc
+      ? monthTxs.filter((t: any) => t.category_id === categoryId).reduce((s: number, t: any) => s + Number(t.amount) + Number(t.fee || 0), 0)
+      : 0;
+    return {
+      label: alloc?.label || selectedCat?.name || "this category",
+      hasEnvelope: !!alloc,
+      envLeft: alloc ? Number(alloc.amount) - envSpent - cost : 0,
+      earningsLeft: earnings - spentAll - cost,
+      cost,
+    };
+  })();
+
+
   const submit = async () => {
     if (!description || !amount || !walletId) { toast.error("Fill required fields"); return; }
     if (type === "transfer" && !toWalletId) { toast.error("Pick destination wallet"); return; }
