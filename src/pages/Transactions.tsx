@@ -29,20 +29,30 @@ export default function Transactions() {
   const [walletFilter, setWalletFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState<{ shortcut: DateShortcut; range: DateRange; custom?: any }>({ shortcut: "all", range: null });
   const [loading, setLoading] = useState(true);
+  const [plan, setPlan] = useState<any>(null);
+  const [allocs, setAllocs] = useState<any[]>([]);
 
   const load = async () => {
     if (!user) return;
-    const [tx, w, c, t, tk] = await Promise.all([
+    const period = new Date().toISOString().slice(0, 7);
+    const [tx, w, c, t, tk, pl] = await Promise.all([
       supabase.from("transactions").select("*").eq("user_id", user.id).order("date", { ascending: false }),
       supabase.from("wallets").select("*").eq("user_id", user.id),
       supabase.from("categories").select("*").eq("user_id", user.id),
       supabase.from("cost_tiers").select("*").eq("is_global", true),
       supabase.from("tasks").select("id, title").eq("user_id", user.id),
+      supabase.from("income_plans").select("*").eq("user_id", user.id).eq("period", period).maybeSingle(),
     ]);
     setTxs(tx.data || []); setWallets(w.data || []); setCategories(c.data || []);
     setTiers((t.data || []) as Tier[]); setTasks(tk.data || []);
+    setPlan(pl.data || null);
+    if (pl.data) {
+      const a = await supabase.from("plan_allocations").select("*").eq("plan_id", pl.data.id);
+      setAllocs(a.data || []);
+    } else setAllocs([]);
     setLoading(false);
   };
+
 
   useEffect(() => { load(); }, [user]);
 
