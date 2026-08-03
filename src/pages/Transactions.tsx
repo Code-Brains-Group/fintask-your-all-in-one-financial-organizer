@@ -296,6 +296,20 @@ function TxSheet({ wallets, categories, tiers, tasks, tx, plan, allocs, allTxs, 
               )}
             </div>
           )}
+          {envelope && categoryId && Number(amount) > 0 && (
+            <div className={`rounded-lg border p-3 text-sm space-y-1 ${envelope.hasEnvelope && envelope.envLeft < 0 ? "border-danger/40 bg-danger/5" : "border-primary/30 bg-primary/[0.04]"}`}>
+              <div className="font-medium">Planner impact</div>
+              {envelope.hasEnvelope ? (
+                <div>{envelope.label} envelope: <span className={envelope.envLeft < 0 ? "text-danger font-semibold" : "text-success font-semibold"}>
+                  {envelope.envLeft < 0 ? `over by ${fmtKES(Math.abs(envelope.envLeft))}` : `${fmtKES(envelope.envLeft)} left`}
+                </span> after this.</div>
+              ) : (
+                <div className="text-muted-foreground">No envelope set for this category yet.</div>
+              )}
+              <div>Monthly earnings: <span className={envelope.earningsLeft < 0 ? "text-danger font-semibold" : "font-semibold"}>{fmtKES(envelope.earningsLeft)}</span> remaining.</div>
+            </div>
+          )}
+
           <div><Label>{type === "transfer" ? "From wallet" : "Wallet"}</Label>
             <Select value={walletId} onValueChange={setWalletId}>
               <SelectTrigger><SelectValue placeholder="Select wallet" /></SelectTrigger>
