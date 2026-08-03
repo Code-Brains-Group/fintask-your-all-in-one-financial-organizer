@@ -38,6 +38,8 @@ export function MpesaImportDialog({ wallets, categories, existingTransactions, o
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [statementTotal, setStatementTotal] = useState(0);
+  const [picked, setPicked] = useState<string[]>([]);
+
 
   const selected = drafts.find((draft) => draft.id === selectedId) || drafts[0];
   const selectedPosition = selected ? drafts.findIndex((draft) => draft.id === selected.id) + 1 : 0;
