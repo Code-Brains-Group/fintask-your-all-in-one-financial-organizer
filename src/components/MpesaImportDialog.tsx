@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { AlertCircle, Check, CheckCircle2, FileUp, Loader2, LockKeyhole, Pencil, Sparkles, Trash2 } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2, FileUp, Loader2, LockKeyhole, Pencil, Sparkles, Trash2, Layers } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { fmtKES, METHOD_LABELS } from "@/lib/finance";
@@ -7,6 +7,7 @@ import { MpesaStatementRow, mpesaMethod, parseMpesaStatement } from "@/lib/mpesa
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+
 
 type TxType = "income" | "expense" | "transfer";
 type Draft = MpesaStatementRow & {
