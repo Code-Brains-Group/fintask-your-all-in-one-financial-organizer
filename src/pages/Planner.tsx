@@ -227,7 +227,7 @@ export default function Planner() {
                     </div>
                     <Button variant="ghost" size="icon" onClick={() => removeRow(index)}><Trash2 className="h-4 w-4" /></Button>
                   </div>
-                  <Input value={row.label} onChange={(e) => setRow(index, { label: e.target.value })} placeholder="Nickname (optional) e.g.家 Household run" className="h-8 text-xs" />
+                  <Input value={row.label} onChange={(e) => setRow(index, { label: e.target.value })} placeholder="Nickname (optional) e.g. Household run" className="h-8 text-xs" />
                   <div className="space-y-1.5">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                       <span className="font-medium">{catIcon(row.category_id)} {row.label || catName(row.category_id)}</span>
