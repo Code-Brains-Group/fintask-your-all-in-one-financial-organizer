@@ -188,7 +188,7 @@ export function MpesaImportDialog({ wallets, categories, existingTransactions, o
   };
 
   const reset = () => {
-    setFile(null); setPassword(""); setDrafts([]); setSelectedId(""); setStatementTotal(0);
+    setFile(null); setPassword(""); setDrafts([]); setSelectedId(""); setStatementTotal(0); setPicked([]);
     if (fileInput.current) fileInput.current.value = "";
   };
 
