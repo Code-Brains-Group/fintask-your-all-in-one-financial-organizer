@@ -174,6 +174,7 @@ export type Database = {
           icon: string | null
           id: string
           name: string
+          need_kind: string | null
           type: string
           user_id: string
         }
@@ -182,6 +183,7 @@ export type Database = {
           icon?: string | null
           id?: string
           name: string
+          need_kind?: string | null
           type?: string
           user_id: string
         }
@@ -190,6 +192,7 @@ export type Database = {
           icon?: string | null
           id?: string
           name?: string
+          need_kind?: string | null
           type?: string
           user_id?: string
         }

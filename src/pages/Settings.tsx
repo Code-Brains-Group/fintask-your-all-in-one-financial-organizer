@@ -318,39 +318,66 @@ function WalletsManager({ wallets, onChange }: any) {
   );
 }
 
+const NEED_KINDS = [
+  { value: "need", label: "Need", hint: "Essentials — rent, food, transport" },
+  { value: "want", label: "Want", hint: "Nice to have — fun, shopping" },
+  { value: "savings", label: "Savings", hint: "Money you set aside" },
+];
+
 function CategoriesManager({ categories, onChange }: any) {
   const { user } = useAuth();
   const [name, setName] = useState(""); const [icon, setIcon] = useState("💰"); const [type, setType] = useState("expense");
+  const [needKind, setNeedKind] = useState("need");
   const add = async () => {
     if (!name) return;
-    await supabase.from("categories").insert({ user_id: user!.id, name, icon, type });
+    await supabase.from("categories").insert({ user_id: user!.id, name, icon, type, need_kind: type === "expense" ? needKind : null } as any);
     setName(""); onChange();
+  };
+  const setKind = async (id: string, kind: string) => {
+    await supabase.from("categories").update({ need_kind: kind } as any).eq("id", id);
+    onChange();
   };
   const remove = async (id: string) => { await supabase.from("categories").delete().eq("id", id); onChange(); };
   return (
     <Card><CardHeader><CardTitle className="text-base">Categories</CardTitle></CardHeader>
       <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">Tag expense categories as a need, want or savings — the planner uses this to suggest a smarter split.</p>
         <div className="grid sm:grid-cols-2 gap-2">
           {categories.map((c: any) => (
-            <div key={c.id} className="flex items-center justify-between border rounded-lg p-3">
-              <div className="flex items-center gap-2"><span className="text-xl">{c.icon}</span><div><div className="text-sm font-medium">{c.name}</div><div className="text-xs text-muted-foreground capitalize">{c.type}</div></div></div>
-              <Button size="icon" variant="ghost" onClick={() => remove(c.id)}><Trash2 className="h-4 w-4" /></Button>
+            <div key={c.id} className="flex items-center justify-between border rounded-lg p-3 gap-2">
+              <div className="flex items-center gap-2 min-w-0"><span className="text-xl">{c.icon}</span><div className="min-w-0"><div className="text-sm font-medium truncate">{c.name}</div><div className="text-xs text-muted-foreground capitalize">{c.type}</div></div></div>
+              <div className="flex items-center gap-1">
+                {c.type === "expense" && (
+                  <Select value={c.need_kind || "need"} onValueChange={(v) => setKind(c.id, v)}>
+                    <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>{NEED_KINDS.map((k) => <SelectItem key={k.value} value={k.value}>{k.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
+                <Button size="icon" variant="ghost" onClick={() => remove(c.id)}><Trash2 className="h-4 w-4" /></Button>
+              </div>
             </div>
           ))}
         </div>
-        <div className="flex gap-2 pt-3 border-t">
+        <div className="flex flex-wrap gap-2 pt-3 border-t">
           <Input className="w-16" value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="🏷️" />
-          <Input placeholder="Category name" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input className="flex-1 min-w-[140px]" placeholder="Category name" value={name} onChange={(e) => setName(e.target.value)} />
           <Select value={type} onValueChange={setType}>
             <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent><SelectItem value="expense">Expense</SelectItem><SelectItem value="income">Income</SelectItem></SelectContent>
           </Select>
+          {type === "expense" && (
+            <Select value={needKind} onValueChange={setNeedKind}>
+              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <SelectContent>{NEED_KINDS.map((k) => <SelectItem key={k.value} value={k.value}>{k.label}</SelectItem>)}</SelectContent>
+            </Select>
+          )}
           <Button onClick={add}><Plus className="h-4 w-4" /></Button>
         </div>
       </CardContent>
     </Card>
   );
 }
+
 
 function ReadOnlyCosts({ providers, tiers }: any) {
   const [providerId, setProviderId] = useState<string | null>(null);
