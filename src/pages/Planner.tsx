@@ -404,7 +404,21 @@ export default function Planner() {
         </CardContent>
       </Card>
 
+      <PlanTemplates
+        currentRows={rows.map((r) => ({ category_id: r.category_id, label: r.label, percent: r.percent, amount: r.amount }))}
+        strategy={strategy}
+        earnings={earnings}
+        catLabel={catName}
+        onApply={(items, mode) => {
+          setStrategy(mode);
+          setRows(items.map((i) => ({ category_id: i.category_id, label: i.label, percent: i.percent, amount: i.amount })));
+        }}
+      />
+
+      <PlanTimeline categories={categories} refreshKey={refreshKey} onOpenMonth={setPeriod} />
+
       <Card>
+
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><CalendarRange className="h-4 w-4" /> Your plans</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {plans.length === 0 ? (
