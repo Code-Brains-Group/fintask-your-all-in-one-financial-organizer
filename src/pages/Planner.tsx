@@ -9,13 +9,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Save, Trash2, Wand2, Wallet, PiggyBank, AlertTriangle } from "lucide-react";
+import { Plus, Save, Trash2, Wand2, Wallet, PiggyBank, AlertTriangle, Copy, Sparkles, CalendarRange } from "lucide-react";
 import { toast } from "sonner";
 
 type Row = { id?: string; category_id: string | null; label: string; percent: number; amount: number };
+type PlanRow = { id: string; period: string; total_income: number; strategy: string };
 
 const monthLabel = (period: string) =>
   new Date(`${period}-01T00:00:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+
+const shiftPeriod = (period: string, months: number) => {
+  const d = new Date(`${period}-01T00:00:00`);
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().slice(0, 7);
+};
 
 export default function Planner() {
   const { user } = useAuth();
@@ -26,6 +33,8 @@ export default function Planner() {
   const [rows, setRows] = useState<Row[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [txs, setTxs] = useState<any[]>([]);
+  const [plans, setPlans] = useState<PlanRow[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -36,17 +45,28 @@ export default function Planner() {
     return d.toISOString().slice(0, 10);
   }, [period]);
 
+  const loadPlans = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("income_plans").select("id, period, total_income, strategy")
+      .eq("user_id", user.id).order("period", { ascending: false });
+    setPlans((data || []) as PlanRow[]);
+  };
+
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    const [plan, cats, tx] = await Promise.all([
+    const histStart = `${shiftPeriod(period, -3)}-01`;
+    const [plan, cats, tx, hist] = await Promise.all([
       supabase.from("income_plans").select("*").eq("user_id", user.id).eq("period", period).maybeSingle(),
       supabase.from("categories").select("*").eq("user_id", user.id),
       supabase.from("transactions").select("id, amount, fee, type, category_id, date, description")
         .eq("user_id", user.id).gte("date", start).lte("date", end),
+      supabase.from("transactions").select("amount, fee, type, category_id, date")
+        .eq("user_id", user.id).gte("date", histStart).lt("date", start),
     ]);
     setCategories(cats.data || []);
     setTxs(tx.data || []);
+    setHistory(hist.data || []);
     if (plan.data) {
       setPlanId(plan.data.id);
       setIncome(String(Number(plan.data.total_income) || ""));
@@ -60,6 +80,7 @@ export default function Planner() {
       setPlanId(null); setIncome(""); setStrategy("amount"); setRows([]);
     }
     setLoading(false);
+    loadPlans();
   };
 
   useEffect(() => { load(); }, [user, period]);
@@ -68,6 +89,7 @@ export default function Planner() {
   const expenseCats = categories.filter((c) => c.type === "expense");
   const catName = (id: string | null) => categories.find((c) => c.id === id)?.name || "Unassigned";
   const catIcon = (id: string | null) => categories.find((c) => c.id === id)?.icon || "🧾";
+  const catKind = (id: string | null) => categories.find((c) => c.id === id)?.need_kind || null;
 
   const plannedFor = (row: Row) => strategy === "percent" ? (earnings * (row.percent || 0)) / 100 : row.amount || 0;
   const spentFor = (row: Row) => txs
@@ -80,24 +102,58 @@ export default function Planner() {
   const leftFromEarnings = earnings - totalSpent;
   const overspentRows = rows.filter((row) => spentFor(row) > plannedFor(row));
 
+  const needTotal = rows.filter((r) => catKind(r.category_id) === "need").reduce((s, r) => s + plannedFor(r), 0);
+  const wantTotal = rows.filter((r) => catKind(r.category_id) === "want").reduce((s, r) => s + plannedFor(r), 0);
+  const saveTotal = rows.filter((r) => !r.category_id || catKind(r.category_id) === "savings").reduce((s, r) => s + plannedFor(r), 0);
+
   const setRow = (index: number, patch: Partial<Row>) =>
     setRows((current) => current.map((row, i) => i === index ? { ...row, ...patch } : row));
 
   const addRow = () => setRows((current) => [...current, { category_id: null, label: "", percent: 0, amount: 0 }]);
   const removeRow = (index: number) => setRows((current) => current.filter((_, i) => i !== index));
 
+  // Average monthly spend per category over the last 3 months
+  const avgByCategory = useMemo(() => {
+    const months = new Set(history.map((t: any) => String(t.date).slice(0, 7)));
+    const divisor = Math.max(1, months.size);
+    const map = new Map<string, number>();
+    history.filter((t: any) => t.type === "expense" && t.category_id).forEach((t: any) => {
+      map.set(t.category_id, (map.get(t.category_id) || 0) + Number(t.amount) + Number(t.fee || 0));
+    });
+    const out = new Map<string, number>();
+    map.forEach((v, k) => out.set(k, v / divisor));
+    return out;
+  }, [history]);
+
+  const buildSuggestion = (base: number): Row[] => {
+    const needs = expenseCats.filter((c) => (c.need_kind || "need") === "need");
+    const wants = expenseCats.filter((c) => c.need_kind === "want");
+    const savingsCats = expenseCats.filter((c) => c.need_kind === "savings");
+    const share = (list: any[], pool: number): Row[] => {
+      if (!list.length) return [];
+      const weights = list.map((c) => avgByCategory.get(c.id) || 0);
+      const total = weights.reduce((a, b) => a + b, 0);
+      return list.map((c, i) => {
+        const amount = total > 0 ? (pool * weights[i]) / total : pool / list.length;
+        return { category_id: c.id, label: "", percent: base ? (amount / base) * 100 : 0, amount: Math.round(amount) };
+      });
+    };
+    const result = [
+      ...share(needs, base * 0.5),
+      ...share(wants, base * 0.3),
+      ...(savingsCats.length
+        ? share(savingsCats, base * 0.2)
+        : [{ category_id: null, label: "Savings & investments", percent: 20, amount: Math.round(base * 0.2) }]),
+    ];
+    return result.filter((r) => r.amount > 0 || r.percent > 0);
+  };
+
   const applyRule = () => {
     if (!earnings) { toast.error("Enter your expected earnings first"); return; }
-    const pick = (pattern: RegExp) => expenseCats.find((c) => pattern.test(c.name))?.id || null;
-    const preset: Row[] = [
-      { category_id: pick(/food|grocer/i), label: "Needs — food & groceries", percent: 30, amount: earnings * 0.3 },
-      { category_id: pick(/rent|hous|bill|utilit/i), label: "Needs — rent & bills", percent: 20, amount: earnings * 0.2 },
-      { category_id: pick(/transport|fuel/i), label: "Transport", percent: 10, amount: earnings * 0.1 },
-      { category_id: pick(/entertain|fun|shop/i), label: "Wants", percent: 20, amount: earnings * 0.2 },
-      { category_id: null, label: "Savings & investments", percent: 20, amount: earnings * 0.2 },
-    ];
+    const preset = buildSuggestion(earnings);
+    if (!preset.length) { toast.error("Tag a few categories as need/want first in Settings"); return; }
     setRows(preset);
-    toast.success("50/30/20 style plan applied — tweak it as you like");
+    toast.success("Suggested split applied using your need/want tags and past spending");
   };
 
   const save = async () => {
@@ -124,12 +180,57 @@ export default function Planner() {
     load();
   };
 
-  const removePlan = async () => {
-    if (!planId) return;
-    if (!confirm(`Delete the plan for ${monthLabel(period)}?`)) return;
-    await supabase.from("income_plans").delete().eq("id", planId);
+  const removePlan = async (id?: string, label?: string) => {
+    const target = id || planId;
+    if (!target) return;
+    if (!confirm(`Delete the plan for ${label || monthLabel(period)}?`)) return;
+    await supabase.from("income_plans").delete().eq("id", target);
     toast.success("Plan deleted");
-    load();
+    if (target === planId) load(); else loadPlans();
+  };
+
+  // Copy the current plan into another month
+  const copyTo = async (targetPeriod: string) => {
+    if (!user) return;
+    if (!earnings) { toast.error("Nothing to copy — this month has no plan yet"); return; }
+    const { data: plan, error } = await supabase.from("income_plans")
+      .upsert({ user_id: user.id, period: targetPeriod, total_income: earnings, strategy }, { onConflict: "user_id,period" })
+      .select("id").single();
+    if (error || !plan) { toast.error(error?.message || "Could not copy plan"); return; }
+    await supabase.from("plan_allocations").delete().eq("plan_id", plan.id);
+    if (rows.length) {
+      await supabase.from("plan_allocations").insert(rows.map((row) => ({
+        user_id: user.id, plan_id: plan.id, category_id: row.category_id, label: row.label || null,
+        percent: strategy === "percent" ? row.percent || 0 : earnings ? ((row.amount || 0) / earnings) * 100 : 0,
+        amount: strategy === "percent" ? (earnings * (row.percent || 0)) / 100 : row.amount || 0,
+      })));
+    }
+    toast.success(`Plan copied to ${monthLabel(targetPeriod)}`);
+    loadPlans();
+  };
+
+  const nextPeriod = shiftPeriod(period, 1);
+  const nextPlanExists = plans.some((p) => p.period === nextPeriod);
+  const suggestedNext = useMemo(() => {
+    if (!earnings) return [];
+    return buildSuggestion(earnings);
+  }, [earnings, categories, history]);
+
+  const draftSuggestionForNext = async () => {
+    if (!user || !earnings) { toast.error("Save this month's earnings first"); return; }
+    const preset = buildSuggestion(earnings);
+    if (!preset.length) { toast.error("Tag a few categories as need/want first in Settings"); return; }
+    const { data: plan, error } = await supabase.from("income_plans")
+      .upsert({ user_id: user.id, period: nextPeriod, total_income: earnings, strategy: "amount" }, { onConflict: "user_id,period" })
+      .select("id").single();
+    if (error || !plan) { toast.error(error?.message || "Could not create plan"); return; }
+    await supabase.from("plan_allocations").delete().eq("plan_id", plan.id);
+    await supabase.from("plan_allocations").insert(preset.map((row) => ({
+      user_id: user.id, plan_id: plan.id, category_id: row.category_id, label: row.label || null,
+      percent: row.percent, amount: row.amount,
+    })));
+    toast.success(`Suggested plan created for ${monthLabel(nextPeriod)}`);
+    setPeriod(nextPeriod);
   };
 
   return (
@@ -137,14 +238,15 @@ export default function Planner() {
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Financial planner</h1>
-          <p className="text-muted-foreground text-sm">Set what you expect to earn, share it across envelopes, and watch each one drain as you spend.</p>
+          <p className="text-muted-foreground text-sm">Plan any month ahead, split earnings into envelopes, and copy a plan forward when it works.</p>
         </div>
-        <div className="flex gap-2 items-end">
+        <div className="flex gap-2 items-end flex-wrap">
           <div>
             <Label className="text-xs">Month</Label>
             <Input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} className="w-40" />
           </div>
-          {planId && <Button variant="outline" size="icon" onClick={removePlan}><Trash2 className="h-4 w-4" /></Button>}
+          {planId && <Button variant="outline" size="icon" onClick={() => removePlan()}><Trash2 className="h-4 w-4" /></Button>}
+          <Button variant="outline" onClick={() => copyTo(nextPeriod)}><Copy className="h-4 w-4 mr-1" /> Copy to next month</Button>
           <Button onClick={save} disabled={saving}><Save className="h-4 w-4 mr-1" /> {saving ? "Saving…" : "Save plan"}</Button>
         </div>
       </div>
@@ -176,6 +278,22 @@ export default function Planner() {
         <Stat label="Left from earnings" value={fmtKES(leftFromEarnings)} tone={leftFromEarnings < 0 ? "danger" : "success"} />
       </div>
 
+      {rows.length > 0 && earnings > 0 && (
+        <Card><CardContent className="p-4 space-y-2">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">Needs vs wants vs savings</div>
+          <div className="flex h-3 rounded-full overflow-hidden bg-muted">
+            <div className="bg-primary" style={{ width: `${Math.min(100, (needTotal / earnings) * 100)}%` }} />
+            <div className="bg-warning" style={{ width: `${Math.min(100, (wantTotal / earnings) * 100)}%` }} />
+            <div className="bg-success" style={{ width: `${Math.min(100, (saveTotal / earnings) * 100)}%` }} />
+          </div>
+          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <span>Needs {fmtKES(needTotal)} ({Math.round((needTotal / earnings) * 100)}%)</span>
+            <span>Wants {fmtKES(wantTotal)} ({Math.round((wantTotal / earnings) * 100)}%)</span>
+            <span>Savings {fmtKES(saveTotal)} ({Math.round((saveTotal / earnings) * 100)}%)</span>
+          </div>
+        </CardContent></Card>
+      )}
+
       {overspentRows.length > 0 && (
         <div className="rounded-xl border border-danger/30 bg-danger/5 p-3 text-sm flex items-start gap-2">
           <AlertTriangle className="h-4 w-4 text-danger mt-0.5" />
@@ -204,6 +322,7 @@ export default function Planner() {
               const spent = spentFor(row);
               const remaining = planned - spent;
               const pct = planned > 0 ? Math.min(100, (spent / planned) * 100) : spent > 0 ? 100 : 0;
+              const kind = catKind(row.category_id);
               return (
                 <div key={row.id || index} className="rounded-xl border p-3 space-y-3">
                   <div className="grid gap-2 md:grid-cols-[1.4fr_1fr_auto] md:items-end">
@@ -230,7 +349,10 @@ export default function Planner() {
                   <Input value={row.label} onChange={(e) => setRow(index, { label: e.target.value })} placeholder="Nickname (optional) e.g. Household run" className="h-8 text-xs" />
                   <div className="space-y-1.5">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <span className="font-medium">{catIcon(row.category_id)} {row.label || catName(row.category_id)}</span>
+                      <span className="font-medium flex items-center gap-1.5">
+                        {catIcon(row.category_id)} {row.label || catName(row.category_id)}
+                        {kind && <Badge variant="secondary" className="text-[10px] capitalize">{kind}</Badge>}
+                      </span>
                       <span className="text-muted-foreground">
                         Planned {fmtKES(planned)} · Spent {fmtKES(spent)} ·{" "}
                         <span className={remaining < 0 ? "text-danger font-semibold" : "text-success font-semibold"}>
@@ -244,6 +366,54 @@ export default function Planner() {
                 </div>
               );
             })}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4" /> Suggested plan for {monthLabel(nextPeriod)}</CardTitle>
+          {!nextPlanExists && <Button size="sm" onClick={draftSuggestionForNext}>Create this plan</Button>}
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {nextPlanExists ? (
+            <p className="text-sm text-muted-foreground">You already have a plan for {monthLabel(nextPeriod)} — open it from the list below.</p>
+          ) : suggestedNext.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Enter your expected earnings and tag categories as need/want in Settings to get a suggestion.</p>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">Based on 50% needs / 30% wants / 20% savings, weighted by your last 3 months of spending.</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {suggestedNext.map((row, i) => (
+                  <div key={i} className="flex items-center justify-between rounded-lg border p-2 text-sm">
+                    <span className="flex items-center gap-1.5">{catIcon(row.category_id)} {row.label || catName(row.category_id)}
+                      {catKind(row.category_id) && <Badge variant="secondary" className="text-[10px] capitalize">{catKind(row.category_id)}</Badge>}
+                    </span>
+                    <span className="font-medium">{fmtKES(row.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><CalendarRange className="h-4 w-4" /> Your plans</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {plans.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No saved plans yet — save this month's plan to start your history.</p>
+          ) : plans.map((p) => (
+            <div key={p.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 ${p.period === period ? "border-primary" : ""}`}>
+              <div>
+                <div className="text-sm font-medium">{monthLabel(p.period)}</div>
+                <div className="text-xs text-muted-foreground">Earnings {fmtKES(Number(p.total_income))} · split by {p.strategy === "percent" ? "percentages" : "fixed amounts"}</div>
+              </div>
+              <div className="flex gap-1">
+                <Button size="sm" variant="outline" onClick={() => setPeriod(p.period)}>Open</Button>
+                <Button size="sm" variant="ghost" onClick={() => removePlan(p.id, monthLabel(p.period))}><Trash2 className="h-4 w-4" /></Button>
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
     </div>
