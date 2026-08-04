@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Save, Trash2, Wand2, Wallet, PiggyBank, AlertTriangle, Copy, Sparkles, CalendarRange } from "lucide-react";
 import { toast } from "sonner";
+import PlanTemplates from "@/components/planner/PlanTemplates";
+import PlanTimeline from "@/components/planner/PlanTimeline";
+
 
 type Row = { id?: string; category_id: string | null; label: string; percent: number; amount: number };
 type PlanRow = { id: string; period: string; total_income: number; strategy: string };
@@ -37,6 +40,8 @@ export default function Planner() {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
 
   const start = `${period}-01`;
   const end = useMemo(() => {
@@ -177,8 +182,10 @@ export default function Planner() {
     setPlanId(plan.id);
     setSaving(false);
     toast.success("Plan saved");
+    setRefreshKey((k) => k + 1);
     load();
   };
+
 
   const removePlan = async (id?: string, label?: string) => {
     const target = id || planId;
@@ -397,7 +404,21 @@ export default function Planner() {
         </CardContent>
       </Card>
 
+      <PlanTemplates
+        currentRows={rows.map((r) => ({ category_id: r.category_id, label: r.label, percent: r.percent, amount: r.amount }))}
+        strategy={strategy}
+        earnings={earnings}
+        catLabel={catName}
+        onApply={(items, mode) => {
+          setStrategy(mode);
+          setRows(items.map((i) => ({ category_id: i.category_id, label: i.label, percent: i.percent, amount: i.amount })));
+        }}
+      />
+
+      <PlanTimeline categories={categories} refreshKey={refreshKey} onOpenMonth={setPeriod} />
+
       <Card>
+
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><CalendarRange className="h-4 w-4" /> Your plans</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {plans.length === 0 ? (
