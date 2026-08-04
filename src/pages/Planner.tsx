@@ -182,8 +182,10 @@ export default function Planner() {
     setPlanId(plan.id);
     setSaving(false);
     toast.success("Plan saved");
+    setRefreshKey((k) => k + 1);
     load();
   };
+
 
   const removePlan = async (id?: string, label?: string) => {
     const target = id || planId;
