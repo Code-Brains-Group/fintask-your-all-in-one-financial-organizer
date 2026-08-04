@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Save, Trash2, Wand2, Wallet, PiggyBank, AlertTriangle, Copy, Sparkles, CalendarRange } from "lucide-react";
 import { toast } from "sonner";
+import PlanTemplates from "@/components/planner/PlanTemplates";
+import PlanTimeline from "@/components/planner/PlanTimeline";
+
 
 type Row = { id?: string; category_id: string | null; label: string; percent: number; amount: number };
 type PlanRow = { id: string; period: string; total_income: number; strategy: string };
