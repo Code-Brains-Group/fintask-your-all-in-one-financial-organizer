@@ -40,6 +40,8 @@ export default function Planner() {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
 
   const start = `${period}-01`;
   const end = useMemo(() => {
