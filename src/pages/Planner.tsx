@@ -119,41 +119,49 @@ export default function Planner() {
   const addRow = () => setRows((current) => [...current, { category_id: null, label: "", percent: 0, amount: 0 }]);
   const removeRow = (index: number) => setRows((current) => current.filter((_, i) => i !== index));
 
-  // Average monthly spend per category over the last 3 months
-  const avgByCategory = useMemo(() => {
-    const months = new Set(history.map((t: any) => String(t.date).slice(0, 7)));
-    const divisor = Math.max(1, months.size);
+  // Forecast for next month, straight from the shared engine that powers Insights.
+  const forecasts = useMemo(() => forecastByCategory(history as any), [history]);
+  const forecastMap = useMemo(() => {
     const map = new Map<string, number>();
-    history.filter((t: any) => t.type === "expense" && t.category_id).forEach((t: any) => {
-      map.set(t.category_id, (map.get(t.category_id) || 0) + Number(t.amount) + Number(t.fee || 0));
-    });
-    const out = new Map<string, number>();
-    map.forEach((v, k) => out.set(k, v / divisor));
-    return out;
-  }, [history]);
+    forecasts.forEach((f) => map.set(f.id, f.predicted));
+    return map;
+  }, [forecasts]);
+  const forecastSpend = useMemo(
+    () => forecasts.filter((f) => f.id !== "uncategorized").reduce((s, f) => s + f.predicted, 0),
+    [forecasts]
+  );
+  const forecastIncomeAvg = useMemo(() => forecastIncome(history as any), [history]);
 
+  /**
+   * Suggestion = the Insights forecast per category (so both pages quote the
+   * same number), with anything left over parked in savings. If the forecast
+   * is bigger than expected earnings we scale every envelope down evenly and
+   * say so, instead of inventing 50/30/20 numbers nobody recognises.
+   */
   const buildSuggestion = (base: number): Row[] => {
-    const needs = expenseCats.filter((c) => (c.need_kind || "need") === "need");
-    const wants = expenseCats.filter((c) => c.need_kind === "want");
-    const savingsCats = expenseCats.filter((c) => c.need_kind === "savings");
-    const share = (list: any[], pool: number): Row[] => {
-      if (!list.length) return [];
-      const weights = list.map((c) => avgByCategory.get(c.id) || 0);
-      const total = weights.reduce((a, b) => a + b, 0);
-      return list.map((c, i) => {
-        const amount = total > 0 ? (pool * weights[i]) / total : pool / list.length;
-        return { category_id: c.id, label: "", percent: base ? (amount / base) * 100 : 0, amount: Math.round(amount) };
+    const covered = expenseCats.filter((c) => forecastMap.get(c.id));
+    const rawTotal = covered.reduce((s, c) => s + (forecastMap.get(c.id) || 0), 0);
+    const over = rawTotal > base && base > 0;
+    const scale = over ? base / rawTotal : 1;
+
+    const result: Row[] = covered.map((c) => {
+      const amount = Math.round((forecastMap.get(c.id) || 0) * scale);
+      return { category_id: c.id, label: "", percent: base ? (amount / base) * 100 : 0, amount };
+    });
+
+    const leftover = Math.round(base - result.reduce((s, r) => s + r.amount, 0));
+    if (leftover > 0) {
+      const savingsCat = expenseCats.find((c) => c.need_kind === "savings");
+      result.push({
+        category_id: savingsCat?.id || null,
+        label: savingsCat ? "" : "Savings & investments",
+        percent: base ? (leftover / base) * 100 : 0,
+        amount: leftover,
       });
-    };
-    const result = [
-      ...share(needs, base * 0.5),
-      ...share(wants, base * 0.3),
-      ...(savingsCats.length
-        ? share(savingsCats, base * 0.2)
-        : [{ category_id: null, label: "Savings & investments", percent: 20, amount: Math.round(base * 0.2) }]),
-    ];
-    return result.filter((r) => r.amount > 0 || r.percent > 0);
+    }
+    return result.filter((r) => r.amount > 0);
   };
+
 
   const applyRule = () => {
     if (!earnings) { toast.error("Enter your expected earnings first"); return; }
