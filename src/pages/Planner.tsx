@@ -405,7 +405,19 @@ export default function Planner() {
                       </span>
                     </div>
                     <Progress value={pct} className={remaining < 0 ? "[&>div]:bg-danger" : pct > 80 ? "[&>div]:bg-warning" : ""} />
-                    {remaining < 0 && <Badge variant="destructive" className="text-[10px]">Envelope in the red</Badge>}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {remaining < 0 && <Badge variant="destructive" className="text-[10px]">Envelope in the red</Badge>}
+                      {row.category_id && (forecastMap.get(row.category_id) || 0) > 0 && (
+                        <button type="button"
+                          onClick={() => setRow(index, strategy === "percent"
+                            ? { percent: earnings ? Math.round(((forecastMap.get(row.category_id!) || 0) / earnings) * 1000) / 10 : 0 }
+                            : { amount: Math.round(forecastMap.get(row.category_id!) || 0) })}
+                          className="text-[10px] text-primary hover:underline">
+                          Forecast {fmtKES(forecastMap.get(row.category_id) || 0)} — use it
+                        </button>
+                      )}
+                    </div>
+
                   </div>
                 </div>
               );
