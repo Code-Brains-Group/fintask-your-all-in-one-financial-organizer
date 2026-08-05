@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { fmtKES } from "@/lib/finance";
+import { forecastByCategory, forecastIncome } from "@/lib/forecast";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,15 +62,17 @@ export default function Planner() {
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    const histStart = `${shiftPeriod(period, -3)}-01`;
+    const histStart = `${shiftPeriod(period, -12)}-01`;
     const [plan, cats, tx, hist] = await Promise.all([
       supabase.from("income_plans").select("*").eq("user_id", user.id).eq("period", period).maybeSingle(),
       supabase.from("categories").select("*").eq("user_id", user.id),
       supabase.from("transactions").select("id, amount, fee, type, category_id, date, description")
         .eq("user_id", user.id).gte("date", start).lte("date", end),
+      // Same window the Insights page uses, so both screens forecast identically
       supabase.from("transactions").select("amount, fee, type, category_id, date")
         .eq("user_id", user.id).gte("date", histStart).lt("date", start),
     ]);
+
     setCategories(cats.data || []);
     setTxs(tx.data || []);
     setHistory(hist.data || []);
@@ -117,49 +121,59 @@ export default function Planner() {
   const addRow = () => setRows((current) => [...current, { category_id: null, label: "", percent: 0, amount: 0 }]);
   const removeRow = (index: number) => setRows((current) => current.filter((_, i) => i !== index));
 
-  // Average monthly spend per category over the last 3 months
-  const avgByCategory = useMemo(() => {
-    const months = new Set(history.map((t: any) => String(t.date).slice(0, 7)));
-    const divisor = Math.max(1, months.size);
+  // Forecast for next month, straight from the shared engine that powers Insights.
+  const forecasts = useMemo(() => forecastByCategory(history as any), [history]);
+  const forecastMap = useMemo(() => {
     const map = new Map<string, number>();
-    history.filter((t: any) => t.type === "expense" && t.category_id).forEach((t: any) => {
-      map.set(t.category_id, (map.get(t.category_id) || 0) + Number(t.amount) + Number(t.fee || 0));
-    });
-    const out = new Map<string, number>();
-    map.forEach((v, k) => out.set(k, v / divisor));
-    return out;
-  }, [history]);
+    forecasts.forEach((f) => map.set(f.id, f.predicted));
+    return map;
+  }, [forecasts]);
+  const forecastSpend = useMemo(
+    () => forecasts.filter((f) => f.id !== "uncategorized").reduce((s, f) => s + f.predicted, 0),
+    [forecasts]
+  );
+  const forecastIncomeAvg = useMemo(() => forecastIncome(history as any), [history]);
 
+  /**
+   * Suggestion = the Insights forecast per category (so both pages quote the
+   * same number), with anything left over parked in savings. If the forecast
+   * is bigger than expected earnings we scale every envelope down evenly and
+   * say so, instead of inventing 50/30/20 numbers nobody recognises.
+   */
   const buildSuggestion = (base: number): Row[] => {
-    const needs = expenseCats.filter((c) => (c.need_kind || "need") === "need");
-    const wants = expenseCats.filter((c) => c.need_kind === "want");
-    const savingsCats = expenseCats.filter((c) => c.need_kind === "savings");
-    const share = (list: any[], pool: number): Row[] => {
-      if (!list.length) return [];
-      const weights = list.map((c) => avgByCategory.get(c.id) || 0);
-      const total = weights.reduce((a, b) => a + b, 0);
-      return list.map((c, i) => {
-        const amount = total > 0 ? (pool * weights[i]) / total : pool / list.length;
-        return { category_id: c.id, label: "", percent: base ? (amount / base) * 100 : 0, amount: Math.round(amount) };
+    const covered = expenseCats.filter((c) => forecastMap.get(c.id));
+    const rawTotal = covered.reduce((s, c) => s + (forecastMap.get(c.id) || 0), 0);
+    const over = rawTotal > base && base > 0;
+    const scale = over ? base / rawTotal : 1;
+
+    const result: Row[] = covered.map((c) => {
+      const amount = Math.round((forecastMap.get(c.id) || 0) * scale);
+      return { category_id: c.id, label: "", percent: base ? (amount / base) * 100 : 0, amount };
+    });
+
+    const leftover = Math.round(base - result.reduce((s, r) => s + r.amount, 0));
+    if (leftover > 0) {
+      const savingsCat = expenseCats.find((c) => c.need_kind === "savings");
+      result.push({
+        category_id: savingsCat?.id || null,
+        label: savingsCat ? "" : "Savings & investments",
+        percent: base ? (leftover / base) * 100 : 0,
+        amount: leftover,
       });
-    };
-    const result = [
-      ...share(needs, base * 0.5),
-      ...share(wants, base * 0.3),
-      ...(savingsCats.length
-        ? share(savingsCats, base * 0.2)
-        : [{ category_id: null, label: "Savings & investments", percent: 20, amount: Math.round(base * 0.2) }]),
-    ];
-    return result.filter((r) => r.amount > 0 || r.percent > 0);
+    }
+    return result.filter((r) => r.amount > 0);
   };
+
 
   const applyRule = () => {
     if (!earnings) { toast.error("Enter your expected earnings first"); return; }
     const preset = buildSuggestion(earnings);
-    if (!preset.length) { toast.error("Tag a few categories as need/want first in Settings"); return; }
+    if (!preset.length) { toast.error("Not enough spending history yet — add a few transactions first"); return; }
     setRows(preset);
-    toast.success("Suggested split applied using your need/want tags and past spending");
+    setStrategy("amount");
+    toast.success("Applied your forecast — same numbers as the Insights page");
   };
+
 
   const save = async () => {
     if (!user) return;
@@ -226,7 +240,7 @@ export default function Planner() {
   const draftSuggestionForNext = async () => {
     if (!user || !earnings) { toast.error("Save this month's earnings first"); return; }
     const preset = buildSuggestion(earnings);
-    if (!preset.length) { toast.error("Tag a few categories as need/want first in Settings"); return; }
+    if (!preset.length) { toast.error("Not enough spending history yet to forecast next month"); return; }
     const { data: plan, error } = await supabase.from("income_plans")
       .upsert({ user_id: user.id, period: nextPeriod, total_income: earnings, strategy: "amount" }, { onConflict: "user_id,period" })
       .select("id").single();
@@ -245,7 +259,9 @@ export default function Planner() {
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Financial planner</h1>
-          <p className="text-muted-foreground text-sm">Plan any month ahead, split earnings into envelopes, and copy a plan forward when it works.</p>
+          <p className="text-muted-foreground text-sm">
+            Plan any month, split earnings into envelopes, and let your spending forecast do the first draft.
+          </p>
         </div>
         <div className="flex gap-2 items-end flex-wrap">
           <div>
@@ -258,25 +274,46 @@ export default function Planner() {
         </div>
       </div>
 
+      {/* Step 1 — earnings */}
       <Card>
-        <CardContent className="p-4 grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-end">
-          <div>
-            <Label>Expected earnings for {monthLabel(period)}</Label>
-            <Input type="number" inputMode="decimal" value={income} onChange={(e) => setIncome(e.target.value)} placeholder="e.g. 60000" className="text-lg font-semibold" />
-          </div>
-          <div>
-            <Label className="text-xs">Split by</Label>
-            <div className="flex gap-1 rounded-lg border p-1">
-              {(["amount", "percent"] as const).map((mode) => (
-                <Button key={mode} size="sm" variant={strategy === mode ? "default" : "ghost"} className="capitalize" onClick={() => setStrategy(mode)}>
-                  {mode === "amount" ? "Fixed amounts" : "Percentages"}
-                </Button>
-              ))}
+        <CardContent className="p-4 space-y-4">
+          <div className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-end">
+            <div>
+              <Label>1. Expected earnings for {monthLabel(period)}</Label>
+              <Input type="number" inputMode="decimal" value={income} onChange={(e) => setIncome(e.target.value)} placeholder="e.g. 60000" className="text-lg font-semibold" />
+              {forecastIncomeAvg > 0 && !earnings && (
+                <button type="button" onClick={() => setIncome(String(Math.round(forecastIncomeAvg)))}
+                  className="text-xs text-primary hover:underline mt-1">
+                  Use your 3-month average income ({fmtKES(forecastIncomeAvg)})
+                </button>
+              )}
             </div>
+            <div>
+              <Label className="text-xs">Split by</Label>
+              <div className="flex gap-1 rounded-lg border p-1">
+                {(["amount", "percent"] as const).map((mode) => (
+                  <Button key={mode} size="sm" variant={strategy === mode ? "default" : "ghost"} className="capitalize" onClick={() => setStrategy(mode)}>
+                    {mode === "amount" ? "Fixed amounts" : "Percentages"}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <Button onClick={applyRule}><Wand2 className="h-4 w-4 mr-1" /> Draft from my forecast</Button>
           </div>
-          <Button variant="outline" onClick={applyRule}><Wand2 className="h-4 w-4 mr-1" /> Suggest a split</Button>
+
+          {forecastSpend > 0 && (
+            <div className="rounded-lg bg-muted/50 border p-3 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+              <span className="font-medium text-foreground">Your forecast (same as Insights &amp; Reports):</span>
+              <span>Predicted spend {fmtKES(forecastSpend)}</span>
+              <span>Avg income {fmtKES(forecastIncomeAvg)}</span>
+              {earnings > 0 && forecastSpend > earnings && (
+                <span className="text-danger">Forecast exceeds your earnings — envelopes get scaled down evenly.</span>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
+
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Earnings" value={fmtKES(earnings)} icon={Wallet} />
@@ -313,7 +350,7 @@ export default function Planner() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Envelopes</CardTitle>
+          <CardTitle className="text-base">2. Envelopes</CardTitle>
           <Button size="sm" variant="outline" onClick={addRow}><Plus className="h-4 w-4 mr-1" /> Add envelope</Button>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -368,7 +405,19 @@ export default function Planner() {
                       </span>
                     </div>
                     <Progress value={pct} className={remaining < 0 ? "[&>div]:bg-danger" : pct > 80 ? "[&>div]:bg-warning" : ""} />
-                    {remaining < 0 && <Badge variant="destructive" className="text-[10px]">Envelope in the red</Badge>}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {remaining < 0 && <Badge variant="destructive" className="text-[10px]">Envelope in the red</Badge>}
+                      {row.category_id && (forecastMap.get(row.category_id) || 0) > 0 && (
+                        <button type="button"
+                          onClick={() => setRow(index, strategy === "percent"
+                            ? { percent: earnings ? Math.round(((forecastMap.get(row.category_id!) || 0) / earnings) * 1000) / 10 : 0 }
+                            : { amount: Math.round(forecastMap.get(row.category_id!) || 0) })}
+                          className="text-[10px] text-primary hover:underline">
+                          Forecast {fmtKES(forecastMap.get(row.category_id) || 0)} — use it
+                        </button>
+                      )}
+                    </div>
+
                   </div>
                 </div>
               );
@@ -385,22 +434,33 @@ export default function Planner() {
           {nextPlanExists ? (
             <p className="text-sm text-muted-foreground">You already have a plan for {monthLabel(nextPeriod)} — open it from the list below.</p>
           ) : suggestedNext.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Enter your expected earnings and tag categories as need/want in Settings to get a suggestion.</p>
+            <p className="text-sm text-muted-foreground">Enter your expected earnings above — we'll draft the split from your spending forecast.</p>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground">Based on 50% needs / 30% wants / 20% savings, weighted by your last 3 months of spending.</p>
+              <p className="text-xs text-muted-foreground">
+                Each envelope equals the forecast shown on Insights for that category (3-month average, trend adjusted).
+                Whatever your earnings don't spend goes to savings.
+              </p>
               <div className="grid gap-2 sm:grid-cols-2">
-                {suggestedNext.map((row, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-lg border p-2 text-sm">
-                    <span className="flex items-center gap-1.5">{catIcon(row.category_id)} {row.label || catName(row.category_id)}
-                      {catKind(row.category_id) && <Badge variant="secondary" className="text-[10px] capitalize">{catKind(row.category_id)}</Badge>}
-                    </span>
-                    <span className="font-medium">{fmtKES(row.amount)}</span>
-                  </div>
-                ))}
+                {suggestedNext.map((row, i) => {
+                  const forecast = row.category_id ? forecastMap.get(row.category_id) || 0 : 0;
+                  const scaled = forecast > 0 && Math.abs(forecast - row.amount) > 1;
+                  return (
+                    <div key={i} className="flex items-center justify-between rounded-lg border p-2 text-sm">
+                      <span className="flex items-center gap-1.5">{catIcon(row.category_id)} {row.label || catName(row.category_id)}
+                        {catKind(row.category_id) && <Badge variant="secondary" className="text-[10px] capitalize">{catKind(row.category_id)}</Badge>}
+                      </span>
+                      <span className="text-right">
+                        <span className="font-medium">{fmtKES(row.amount)}</span>
+                        {scaled && <span className="block text-[10px] text-muted-foreground">forecast {fmtKES(forecast)}</span>}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
+
         </CardContent>
       </Card>
 

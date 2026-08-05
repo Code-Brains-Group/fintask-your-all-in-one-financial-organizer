@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { fmtKES } from "@/lib/finance";
+import { forecastByCategory, forecastIncome } from "@/lib/forecast";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -78,22 +80,16 @@ export default function Insights() {
     const topCats = sortedAll.slice(0, 5);
     const leastCats = sortedAll.slice(-3).reverse();
 
-    // Predict next month per category = average of last 3 months (incl. months with 0)
-    const predictionPerCat = Object.keys(catMonthly).map(id => {
-      const totals = last3.map(m => catMonthly[id]?.[m] || 0);
-      const avg = totals.reduce((a, b) => a + b, 0) / Math.max(last3.length, 1);
-      // Trend factor: compare last month vs avg of prior two
-      const lastM = totals[totals.length - 1] || 0;
-      const priorAvg = totals.slice(0, -1).reduce((a, b) => a + b, 0) / Math.max(totals.length - 1, 1);
-      const trend = priorAvg > 0 ? (lastM - priorAvg) / priorAvg : 0;
-      const predicted = avg * (1 + Math.max(-0.5, Math.min(0.5, trend)) * 0.5);
-      return { id, predicted, avg, trend, lastM, priorAvg };
-    }).sort((a, b) => b.predicted - a.predicted);
+    // Shared forecast engine — identical logic to the Planner suggestion
+    const predictionPerCat = forecastByCategory(txs).map(f => ({
+      id: f.id, predicted: f.predicted, avg: f.avg, trend: f.trend, lastM: f.lastMonth, priorAvg: f.priorAvg,
+    }));
 
     const totalPredicted = predictionPerCat.reduce((s, p) => s + p.predicted, 0);
 
     // Income avg for next month
-    const incomeAvg = last3.reduce((s, m) => s + (monthlyIncome[m] || 0), 0) / Math.max(last3.length, 1);
+    const incomeAvg = forecastIncome(txs);
+
 
     // Trend chart (last 6 months)
     const trendData = last6.map(m => ({
