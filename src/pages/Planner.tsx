@@ -168,10 +168,12 @@ export default function Planner() {
   const applyRule = () => {
     if (!earnings) { toast.error("Enter your expected earnings first"); return; }
     const preset = buildSuggestion(earnings);
-    if (!preset.length) { toast.error("Tag a few categories as need/want first in Settings"); return; }
+    if (!preset.length) { toast.error("Not enough spending history yet — add a few transactions first"); return; }
     setRows(preset);
-    toast.success("Suggested split applied using your need/want tags and past spending");
+    setStrategy("amount");
+    toast.success("Applied your forecast — same numbers as the Insights page");
   };
+
 
   const save = async () => {
     if (!user) return;
