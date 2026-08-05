@@ -422,22 +422,33 @@ export default function Planner() {
           {nextPlanExists ? (
             <p className="text-sm text-muted-foreground">You already have a plan for {monthLabel(nextPeriod)} — open it from the list below.</p>
           ) : suggestedNext.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Enter your expected earnings and tag categories as need/want in Settings to get a suggestion.</p>
+            <p className="text-sm text-muted-foreground">Enter your expected earnings above — we'll draft the split from your spending forecast.</p>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground">Based on 50% needs / 30% wants / 20% savings, weighted by your last 3 months of spending.</p>
+              <p className="text-xs text-muted-foreground">
+                Each envelope equals the forecast shown on Insights for that category (3-month average, trend adjusted).
+                Whatever your earnings don't spend goes to savings.
+              </p>
               <div className="grid gap-2 sm:grid-cols-2">
-                {suggestedNext.map((row, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-lg border p-2 text-sm">
-                    <span className="flex items-center gap-1.5">{catIcon(row.category_id)} {row.label || catName(row.category_id)}
-                      {catKind(row.category_id) && <Badge variant="secondary" className="text-[10px] capitalize">{catKind(row.category_id)}</Badge>}
-                    </span>
-                    <span className="font-medium">{fmtKES(row.amount)}</span>
-                  </div>
-                ))}
+                {suggestedNext.map((row, i) => {
+                  const forecast = row.category_id ? forecastMap.get(row.category_id) || 0 : 0;
+                  const scaled = forecast > 0 && Math.abs(forecast - row.amount) > 1;
+                  return (
+                    <div key={i} className="flex items-center justify-between rounded-lg border p-2 text-sm">
+                      <span className="flex items-center gap-1.5">{catIcon(row.category_id)} {row.label || catName(row.category_id)}
+                        {catKind(row.category_id) && <Badge variant="secondary" className="text-[10px] capitalize">{catKind(row.category_id)}</Badge>}
+                      </span>
+                      <span className="text-right">
+                        <span className="font-medium">{fmtKES(row.amount)}</span>
+                        {scaled && <span className="block text-[10px] text-muted-foreground">forecast {fmtKES(forecast)}</span>}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
+
         </CardContent>
       </Card>
 
