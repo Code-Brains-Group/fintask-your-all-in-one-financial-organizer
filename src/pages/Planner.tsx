@@ -60,15 +60,17 @@ export default function Planner() {
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    const histStart = `${shiftPeriod(period, -3)}-01`;
+    const histStart = `${shiftPeriod(period, -12)}-01`;
     const [plan, cats, tx, hist] = await Promise.all([
       supabase.from("income_plans").select("*").eq("user_id", user.id).eq("period", period).maybeSingle(),
       supabase.from("categories").select("*").eq("user_id", user.id),
       supabase.from("transactions").select("id, amount, fee, type, category_id, date, description")
         .eq("user_id", user.id).gte("date", start).lte("date", end),
+      // Same window the Insights page uses, so both screens forecast identically
       supabase.from("transactions").select("amount, fee, type, category_id, date")
         .eq("user_id", user.id).gte("date", histStart).lt("date", start),
     ]);
+
     setCategories(cats.data || []);
     setTxs(tx.data || []);
     setHistory(hist.data || []);
