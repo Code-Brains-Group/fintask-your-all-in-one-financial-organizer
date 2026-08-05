@@ -10,18 +10,25 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Save, Trash2, Wand2, Wallet, PiggyBank, AlertTriangle, Copy, Sparkles, CalendarRange } from "lucide-react";
+import {
+  Plus, Save, Trash2, Wand2, AlertTriangle, Copy, Sparkles, CalendarRange,
+  ChevronLeft, ChevronRight, Check, X,
+} from "lucide-react";
 import { toast } from "sonner";
 import PlanTemplates from "@/components/planner/PlanTemplates";
 import PlanTimeline from "@/components/planner/PlanTimeline";
-
 
 type Row = { id?: string; category_id: string | null; label: string; percent: number; amount: number };
 type PlanRow = { id: string; period: string; total_income: number; strategy: string };
 
 const monthLabel = (period: string) =>
   new Date(`${period}-01T00:00:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+
+const monthShort = (period: string) =>
+  new Date(`${period}-01T00:00:00`).toLocaleDateString("en-GB", { month: "short", year: "2-digit" });
 
 const shiftPeriod = (period: string, months: number) => {
   const d = new Date(`${period}-01T00:00:00`);
@@ -43,7 +50,8 @@ export default function Planner() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
   const start = `${period}-01`;
   const end = useMemo(() => {
@@ -88,6 +96,7 @@ export default function Planner() {
     } else {
       setPlanId(null); setIncome(""); setStrategy("amount"); setRows([]);
     }
+    setDirty(false);
     setLoading(false);
     loadPlans();
   };
@@ -115,11 +124,17 @@ export default function Planner() {
   const wantTotal = rows.filter((r) => catKind(r.category_id) === "want").reduce((s, r) => s + plannedFor(r), 0);
   const saveTotal = rows.filter((r) => !r.category_id || catKind(r.category_id) === "savings").reduce((s, r) => s + plannedFor(r), 0);
 
-  const setRow = (index: number, patch: Partial<Row>) =>
+  const touch = () => setDirty(true);
+  const setRow = (index: number, patch: Partial<Row>) => {
+    touch();
     setRows((current) => current.map((row, i) => i === index ? { ...row, ...patch } : row));
+  };
 
-  const addRow = () => setRows((current) => [...current, { category_id: null, label: "", percent: 0, amount: 0 }]);
-  const removeRow = (index: number) => setRows((current) => current.filter((_, i) => i !== index));
+  const addRow = (categoryId: string | null = null) => {
+    touch();
+    setRows((current) => [...current, { category_id: categoryId, label: "", percent: 0, amount: 0 }]);
+  };
+  const removeRow = (index: number) => { touch(); setRows((current) => current.filter((_, i) => i !== index)); };
 
   // Forecast for next month, straight from the shared engine that powers Insights.
   const forecasts = useMemo(() => forecastByCategory(history as any), [history]);
@@ -136,9 +151,7 @@ export default function Planner() {
 
   /**
    * Suggestion = the Insights forecast per category (so both pages quote the
-   * same number), with anything left over parked in savings. If the forecast
-   * is bigger than expected earnings we scale every envelope down evenly and
-   * say so, instead of inventing 50/30/20 numbers nobody recognises.
+   * same number), with anything left over parked in savings.
    */
   const buildSuggestion = (base: number): Row[] => {
     const covered = expenseCats.filter((c) => forecastMap.get(c.id));
@@ -164,16 +177,28 @@ export default function Planner() {
     return result.filter((r) => r.amount > 0);
   };
 
-
   const applyRule = () => {
     if (!earnings) { toast.error("Enter your expected earnings first"); return; }
     const preset = buildSuggestion(earnings);
     if (!preset.length) { toast.error("Not enough spending history yet — add a few transactions first"); return; }
     setRows(preset);
     setStrategy("amount");
+    touch();
     toast.success("Applied your forecast — same numbers as the Insights page");
   };
 
+  const balanceRemainder = () => {
+    if (!rows.length || !earnings) return;
+    const leftover = unallocated;
+    if (Math.abs(leftover) < 1) { toast.info("Already fully allocated"); return; }
+    const last = rows.length - 1;
+    if (strategy === "percent") {
+      setRow(last, { percent: Math.max(0, Math.round(((plannedFor(rows[last]) + leftover) / earnings) * 1000) / 10) });
+    } else {
+      setRow(last, { amount: Math.max(0, Math.round(plannedFor(rows[last]) + leftover)) });
+    }
+    toast.success(`Moved ${fmtKES(Math.abs(leftover))} into ${rows[last].label || catName(rows[last].category_id)}`);
+  };
 
   const save = async () => {
     if (!user) return;
@@ -199,7 +224,6 @@ export default function Planner() {
     setRefreshKey((k) => k + 1);
     load();
   };
-
 
   const removePlan = async (id?: string, label?: string) => {
     const target = id || planId;
@@ -254,261 +278,378 @@ export default function Planner() {
     setPeriod(nextPeriod);
   };
 
+  const usedCatIds = new Set(rows.map((r) => r.category_id).filter(Boolean) as string[]);
+  const pickable = expenseCats.filter((c) => !usedCatIds.has(c.id));
+  const allocPct = earnings > 0 ? Math.min(100, (allocated / earnings) * 100) : 0;
+  const planMonths = plans.map((p) => p.period);
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Financial planner</h1>
-          <p className="text-muted-foreground text-sm">
-            Plan any month, split earnings into envelopes, and let your spending forecast do the first draft.
-          </p>
-        </div>
-        <div className="flex gap-2 items-end flex-wrap">
-          <div>
-            <Label className="text-xs">Month</Label>
-            <Input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} className="w-40" />
+    <div className="space-y-5 pb-24">
+      {/* Month rail */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={() => setPeriod(shiftPeriod(period, -1))} aria-label="Previous month">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="text-center min-w-[9.5rem]">
+            <div className="text-lg font-bold leading-tight">{monthLabel(period)}</div>
+            <div className="text-[11px] text-muted-foreground">
+              {planId ? "Saved plan" : "No plan yet"}{dirty ? " · unsaved changes" : ""}
+            </div>
           </div>
-          {planId && <Button variant="outline" size="icon" onClick={() => removePlan()}><Trash2 className="h-4 w-4" /></Button>}
-          <Button variant="outline" onClick={() => copyTo(nextPeriod)}><Copy className="h-4 w-4 mr-1" /> Copy to next month</Button>
-          <Button onClick={save} disabled={saving}><Save className="h-4 w-4 mr-1" /> {saving ? "Saving…" : "Save plan"}</Button>
+          <Button variant="ghost" size="icon" onClick={() => setPeriod(shiftPeriod(period, 1))} aria-label="Next month">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {[-2, -1, 0, 1, 2].map((offset) => {
+            const p = shiftPeriod(new Date().toISOString().slice(0, 7), offset);
+            const has = planMonths.includes(p);
+            return (
+              <button key={p} onClick={() => setPeriod(p)}
+                className={`px-2.5 py-1 rounded-full text-xs border whitespace-nowrap transition-colors ${
+                  p === period ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"
+                }`}>
+                {monthShort(p)}{has ? " •" : ""}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Step 1 — earnings */}
-      <Card>
-        <CardContent className="p-4 space-y-4">
-          <div className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-end">
-            <div>
-              <Label>1. Expected earnings for {monthLabel(period)}</Label>
-              <Input type="number" inputMode="decimal" value={income} onChange={(e) => setIncome(e.target.value)} placeholder="e.g. 60000" className="text-lg font-semibold" />
-              {forecastIncomeAvg > 0 && !earnings && (
-                <button type="button" onClick={() => setIncome(String(Math.round(forecastIncomeAvg)))}
-                  className="text-xs text-primary hover:underline mt-1">
-                  Use your 3-month average income ({fmtKES(forecastIncomeAvg)})
-                </button>
-              )}
-            </div>
-            <div>
-              <Label className="text-xs">Split by</Label>
-              <div className="flex gap-1 rounded-lg border p-1">
-                {(["amount", "percent"] as const).map((mode) => (
-                  <Button key={mode} size="sm" variant={strategy === mode ? "default" : "ghost"} className="capitalize" onClick={() => setStrategy(mode)}>
-                    {mode === "amount" ? "Fixed amounts" : "Percentages"}
-                  </Button>
-                ))}
-              </div>
-            </div>
-            <Button onClick={applyRule}><Wand2 className="h-4 w-4 mr-1" /> Draft from my forecast</Button>
-          </div>
+      <Tabs defaultValue="plan">
+        <TabsList className="w-full grid grid-cols-3">
+          <TabsTrigger value="plan">Plan</TabsTrigger>
+          <TabsTrigger value="next">Next month</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+        </TabsList>
 
-          {forecastSpend > 0 && (
-            <div className="rounded-lg bg-muted/50 border p-3 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-              <span className="font-medium text-foreground">Your forecast (same as Insights &amp; Reports):</span>
-              <span>Predicted spend {fmtKES(forecastSpend)}</span>
-              <span>Avg income {fmtKES(forecastIncomeAvg)}</span>
-              {earnings > 0 && forecastSpend > earnings && (
-                <span className="text-danger">Forecast exceeds your earnings — envelopes get scaled down evenly.</span>
+        {/* ---------------- PLAN ---------------- */}
+        <TabsContent value="plan" className="space-y-4 mt-4">
+          {/* Earnings + allocation meter */}
+          <Card className="overflow-hidden">
+            <CardContent className="p-4 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Expected earnings</Label>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-semibold text-muted-foreground">KES</span>
+                    <Input type="number" inputMode="decimal" value={income}
+                      onChange={(e) => { setIncome(e.target.value); touch(); }}
+                      placeholder="0"
+                      className="h-11 text-2xl font-bold border-0 border-b rounded-none px-0 focus-visible:ring-0" />
+                  </div>
+                  {forecastIncomeAvg > 0 && !earnings && (
+                    <button type="button" onClick={() => { setIncome(String(Math.round(forecastIncomeAvg))); touch(); }}
+                      className="text-xs text-primary hover:underline mt-1">
+                      Use my 3-month average ({fmtKES(forecastIncomeAvg)})
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-1 rounded-lg border p-1 self-end">
+                  {(["amount", "percent"] as const).map((mode) => (
+                    <Button key={mode} size="sm" variant={strategy === mode ? "default" : "ghost"}
+                      onClick={() => { setStrategy(mode); touch(); }}>
+                      {mode === "amount" ? "Amounts" : "%"}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="h-2.5 rounded-full bg-muted overflow-hidden flex">
+                  <div className="bg-primary transition-all" style={{ width: `${Math.min(100, (needTotal / (earnings || 1)) * 100)}%` }} />
+                  <div className="bg-warning transition-all" style={{ width: `${Math.min(100, (wantTotal / (earnings || 1)) * 100)}%` }} />
+                  <div className="bg-success transition-all" style={{ width: `${Math.min(100, (saveTotal / (earnings || 1)) * 100)}%` }} />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs">
+                  <span className="text-muted-foreground">
+                    Allocated <span className="font-semibold text-foreground">{fmtKES(allocated)}</span> of {fmtKES(earnings)} ({Math.round(allocPct)}%)
+                  </span>
+                  <span className={unallocated < 0 ? "text-danger font-semibold" : "text-success font-semibold"}>
+                    {unallocated < 0 ? `Over-allocated by ${fmtKES(Math.abs(unallocated))}` : `${fmtKES(unallocated)} still free`}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+                  <span className="flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-primary inline-block" /> Needs {fmtKES(needTotal)}</span>
+                  <span className="flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-warning inline-block" /> Wants {fmtKES(wantTotal)}</span>
+                  <span className="flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-success inline-block" /> Savings {fmtKES(saveTotal)}</span>
+                  <span>· Spent so far {fmtKES(totalSpent)} · {leftFromEarnings < 0 ? "over" : "left"} {fmtKES(Math.abs(leftFromEarnings))}</span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="secondary" onClick={applyRule}><Wand2 className="h-4 w-4 mr-1" /> Draft from forecast</Button>
+                {rows.length > 0 && Math.abs(unallocated) >= 1 && (
+                  <Button size="sm" variant="outline" onClick={balanceRemainder}>
+                    {unallocated > 0 ? "Park the rest" : "Trim the excess"}
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={() => copyTo(nextPeriod)}><Copy className="h-4 w-4 mr-1" /> Copy to {monthShort(nextPeriod)}</Button>
+                {planId && <Button size="sm" variant="ghost" onClick={() => removePlan()}><Trash2 className="h-4 w-4 mr-1" /> Delete</Button>}
+              </div>
+
+              {forecastSpend > 0 && earnings > 0 && forecastSpend > earnings && (
+                <p className="text-xs text-danger">
+                  Your forecast spend ({fmtKES(forecastSpend)}) is above these earnings — drafted envelopes get scaled down evenly.
+                </p>
               )}
+            </CardContent>
+          </Card>
+
+          {overspentRows.length > 0 && (
+            <div className="rounded-xl border border-danger/30 bg-danger/5 p-3 text-sm flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-danger mt-0.5 shrink-0" />
+              <div>
+                <span className="font-medium text-danger">{overspentRows.length} envelope{overspentRows.length > 1 ? "s are" : " is"} in the red.</span>{" "}
+                {overspentRows.map((row) => row.label || catName(row.category_id)).join(", ")}
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
 
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Earnings" value={fmtKES(earnings)} icon={Wallet} />
-        <Stat label="Allocated" value={fmtKES(allocated)} icon={PiggyBank} tone={allocated > earnings ? "danger" : "default"} />
-        <Stat label="Unallocated" value={fmtKES(unallocated)} tone={unallocated < 0 ? "danger" : "success"} />
-        <Stat label="Left from earnings" value={fmtKES(leftFromEarnings)} tone={leftFromEarnings < 0 ? "danger" : "success"} />
-      </div>
-
-      {rows.length > 0 && earnings > 0 && (
-        <Card><CardContent className="p-4 space-y-2">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">Needs vs wants vs savings</div>
-          <div className="flex h-3 rounded-full overflow-hidden bg-muted">
-            <div className="bg-primary" style={{ width: `${Math.min(100, (needTotal / earnings) * 100)}%` }} />
-            <div className="bg-warning" style={{ width: `${Math.min(100, (wantTotal / earnings) * 100)}%` }} />
-            <div className="bg-success" style={{ width: `${Math.min(100, (saveTotal / earnings) * 100)}%` }} />
-          </div>
-          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-            <span>Needs {fmtKES(needTotal)} ({Math.round((needTotal / earnings) * 100)}%)</span>
-            <span>Wants {fmtKES(wantTotal)} ({Math.round((wantTotal / earnings) * 100)}%)</span>
-            <span>Savings {fmtKES(saveTotal)} ({Math.round((saveTotal / earnings) * 100)}%)</span>
-          </div>
-        </CardContent></Card>
-      )}
-
-      {overspentRows.length > 0 && (
-        <div className="rounded-xl border border-danger/30 bg-danger/5 p-3 text-sm flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 text-danger mt-0.5" />
-          <div>
-            <span className="font-medium text-danger">{overspentRows.length} envelope{overspentRows.length > 1 ? "s are" : " is"} in the red.</span>{" "}
-            {overspentRows.map((row) => row.label || catName(row.category_id)).join(", ")} — spending here now eats into other plans.
-          </div>
-        </div>
-      )}
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">2. Envelopes</CardTitle>
-          <Button size="sm" variant="outline" onClick={addRow}><Plus className="h-4 w-4 mr-1" /> Add envelope</Button>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {loading ? [0, 1, 2].map((i) => <div key={i} className="skeleton h-16" />)
-            : rows.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-5xl mb-3">🧧</div>
-                <p className="text-muted-foreground mb-4">No envelopes yet — split your earnings into categories like Food, Rent or Savings.</p>
-                <Button onClick={addRow}><Plus className="h-4 w-4 mr-1" /> Add your first envelope</Button>
-              </div>
-            ) : rows.map((row, index) => {
-              const planned = plannedFor(row);
-              const spent = spentFor(row);
-              const remaining = planned - spent;
-              const pct = planned > 0 ? Math.min(100, (spent / planned) * 100) : spent > 0 ? 100 : 0;
-              const kind = catKind(row.category_id);
-              return (
-                <div key={row.id || index} className="rounded-xl border p-3 space-y-3">
-                  <div className="grid gap-2 md:grid-cols-[1.4fr_1fr_auto] md:items-end">
-                    <div>
-                      <Label className="text-xs">Category</Label>
-                      <Select value={row.category_id || "none"} onValueChange={(value) => setRow(index, { category_id: value === "none" ? null : value })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">— No category (e.g. savings) —</SelectItem>
-                          {expenseCats.map((c) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs">{strategy === "percent" ? "Share of earnings (%)" : "Amount (KES)"}</Label>
-                      <Input type="number" inputMode="decimal"
-                        value={strategy === "percent" ? row.percent || "" : row.amount || ""}
-                        onChange={(e) => setRow(index, strategy === "percent"
-                          ? { percent: Number(e.target.value) || 0 }
-                          : { amount: Number(e.target.value) || 0 })} />
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={() => removeRow(index)}><Trash2 className="h-4 w-4" /></Button>
+          {/* Envelopes */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-base">Envelopes {rows.length > 0 && <span className="text-muted-foreground font-normal">({rows.length})</span>}</CardTitle>
+              <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline"><Plus className="h-4 w-4 mr-1" /> Add</Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-64 p-2">
+                  <div className="max-h-64 overflow-y-auto space-y-1">
+                    {pickable.map((c) => (
+                      <button key={c.id} onClick={() => { addRow(c.id); setPickerOpen(false); }}
+                        className="w-full flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+                        <span>{c.icon} {c.name}</span>
+                        {forecastMap.get(c.id) ? (
+                          <span className="text-[10px] text-muted-foreground">{fmtKES(forecastMap.get(c.id) || 0)}</span>
+                        ) : null}
+                      </button>
+                    ))}
+                    <button onClick={() => { addRow(null); setPickerOpen(false); }}
+                      className="w-full text-left rounded-md px-2 py-1.5 text-sm hover:bg-muted text-muted-foreground">
+                      + Custom envelope (no category)
+                    </button>
                   </div>
-                  <Input value={row.label} onChange={(e) => setRow(index, { label: e.target.value })} placeholder="Nickname (optional) e.g. Household run" className="h-8 text-xs" />
-                  <div className="space-y-1.5">
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <span className="font-medium flex items-center gap-1.5">
-                        {catIcon(row.category_id)} {row.label || catName(row.category_id)}
-                        {kind && <Badge variant="secondary" className="text-[10px] capitalize">{kind}</Badge>}
-                      </span>
-                      <span className="text-muted-foreground">
-                        Planned {fmtKES(planned)} · Spent {fmtKES(spent)} ·{" "}
-                        <span className={remaining < 0 ? "text-danger font-semibold" : "text-success font-semibold"}>
-                          {remaining < 0 ? `Over by ${fmtKES(Math.abs(remaining))}` : `${fmtKES(remaining)} left`}
-                        </span>
-                      </span>
+                </PopoverContent>
+              </Popover>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {loading ? [0, 1, 2].map((i) => <div key={i} className="skeleton h-14" />)
+                : rows.length === 0 ? (
+                  <div className="text-center py-10">
+                    <div className="text-5xl mb-3">🧧</div>
+                    <p className="text-muted-foreground text-sm mb-4 max-w-sm mx-auto">
+                      Split your earnings into envelopes like Food, Rent or Savings — then every transaction eats from its envelope.
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      <Button onClick={applyRule}><Wand2 className="h-4 w-4 mr-1" /> Draft from my forecast</Button>
+                      <Button variant="outline" onClick={() => setPickerOpen(true)}><Plus className="h-4 w-4 mr-1" /> Add manually</Button>
                     </div>
-                    <Progress value={pct} className={remaining < 0 ? "[&>div]:bg-danger" : pct > 80 ? "[&>div]:bg-warning" : ""} />
-                    <div className="flex flex-wrap items-center gap-2">
-                      {remaining < 0 && <Badge variant="destructive" className="text-[10px]">Envelope in the red</Badge>}
-                      {row.category_id && (forecastMap.get(row.category_id) || 0) > 0 && (
-                        <button type="button"
-                          onClick={() => setRow(index, strategy === "percent"
-                            ? { percent: earnings ? Math.round(((forecastMap.get(row.category_id!) || 0) / earnings) * 1000) / 10 : 0 }
-                            : { amount: Math.round(forecastMap.get(row.category_id!) || 0) })}
-                          className="text-[10px] text-primary hover:underline">
-                          Forecast {fmtKES(forecastMap.get(row.category_id) || 0)} — use it
-                        </button>
-                      )}
-                    </div>
+                  </div>
+                ) : rows.map((row, index) => (
+                  <EnvelopeRow
+                    key={row.id || index}
+                    row={row}
+                    index={index}
+                    strategy={strategy}
+                    earnings={earnings}
+                    planned={plannedFor(row)}
+                    spent={spentFor(row)}
+                    icon={catIcon(row.category_id)}
+                    name={catName(row.category_id)}
+                    kind={catKind(row.category_id)}
+                    forecast={row.category_id ? forecastMap.get(row.category_id) || 0 : 0}
+                    expenseCats={expenseCats}
+                    onChange={(patch) => setRow(index, patch)}
+                    onRemove={() => removeRow(index)}
+                  />
+                ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
+        {/* ---------------- NEXT MONTH ---------------- */}
+        <TabsContent value="next" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Sparkles className="h-4 w-4" /> Suggested plan for {monthLabel(nextPeriod)}
+              </CardTitle>
+              {!nextPlanExists && suggestedNext.length > 0 && (
+                <Button size="sm" onClick={draftSuggestionForNext}>Create it</Button>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {nextPlanExists ? (
+                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  You already have a plan for {monthLabel(nextPeriod)}.
+                  <Button size="sm" variant="outline" onClick={() => setPeriod(nextPeriod)}>Open it</Button>
+                </div>
+              ) : suggestedNext.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Enter your expected earnings on the Plan tab — we'll draft the split from your spending forecast.</p>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Each envelope matches the forecast shown on Insights (3-month average, trend adjusted). Whatever's left goes to savings.
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {suggestedNext.map((row, i) => {
+                      const forecast = row.category_id ? forecastMap.get(row.category_id) || 0 : 0;
+                      const scaled = forecast > 0 && Math.abs(forecast - row.amount) > 1;
+                      return (
+                        <div key={i} className="flex items-center justify-between rounded-lg border p-2 text-sm">
+                          <span className="flex items-center gap-1.5 min-w-0 truncate">
+                            {catIcon(row.category_id)} {row.label || catName(row.category_id)}
+                            {catKind(row.category_id) && <Badge variant="secondary" className="text-[10px] capitalize">{catKind(row.category_id)}</Badge>}
+                          </span>
+                          <span className="text-right shrink-0">
+                            <span className="font-medium">{fmtKES(row.amount)}</span>
+                            {scaled && <span className="block text-[10px] text-muted-foreground">forecast {fmtKES(forecast)}</span>}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <PlanTemplates
+            currentRows={rows.map((r) => ({ category_id: r.category_id, label: r.label, percent: r.percent, amount: r.amount }))}
+            strategy={strategy}
+            earnings={earnings}
+            catLabel={catName}
+            onApply={(items, mode) => {
+              setStrategy(mode);
+              setRows(items.map((i) => ({ category_id: i.category_id, label: i.label, percent: i.percent, amount: i.amount })));
+              touch();
+            }}
+          />
+        </TabsContent>
+
+        {/* ---------------- HISTORY ---------------- */}
+        <TabsContent value="history" className="space-y-4 mt-4">
+          <PlanTimeline categories={categories} refreshKey={refreshKey} onOpenMonth={setPeriod} />
+          <Card>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><CalendarRange className="h-4 w-4" /> Your plans</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {plans.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No saved plans yet — save this month's plan to start your history.</p>
+              ) : plans.map((p) => (
+                <div key={p.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 ${p.period === period ? "border-primary" : ""}`}>
+                  <div>
+                    <div className="text-sm font-medium">{monthLabel(p.period)}</div>
+                    <div className="text-xs text-muted-foreground">Earnings {fmtKES(Number(p.total_income))} · split by {p.strategy === "percent" ? "percentages" : "fixed amounts"}</div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="outline" onClick={() => setPeriod(p.period)}>Open</Button>
+                    <Button size="sm" variant="ghost" onClick={() => removePlan(p.id, monthLabel(p.period))}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </div>
-              );
-            })}
-        </CardContent>
-      </Card>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4" /> Suggested plan for {monthLabel(nextPeriod)}</CardTitle>
-          {!nextPlanExists && <Button size="sm" onClick={draftSuggestionForNext}>Create this plan</Button>}
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {nextPlanExists ? (
-            <p className="text-sm text-muted-foreground">You already have a plan for {monthLabel(nextPeriod)} — open it from the list below.</p>
-          ) : suggestedNext.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Enter your expected earnings above — we'll draft the split from your spending forecast.</p>
-          ) : (
-            <>
-              <p className="text-xs text-muted-foreground">
-                Each envelope equals the forecast shown on Insights for that category (3-month average, trend adjusted).
-                Whatever your earnings don't spend goes to savings.
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {suggestedNext.map((row, i) => {
-                  const forecast = row.category_id ? forecastMap.get(row.category_id) || 0 : 0;
-                  const scaled = forecast > 0 && Math.abs(forecast - row.amount) > 1;
-                  return (
-                    <div key={i} className="flex items-center justify-between rounded-lg border p-2 text-sm">
-                      <span className="flex items-center gap-1.5">{catIcon(row.category_id)} {row.label || catName(row.category_id)}
-                        {catKind(row.category_id) && <Badge variant="secondary" className="text-[10px] capitalize">{catKind(row.category_id)}</Badge>}
-                      </span>
-                      <span className="text-right">
-                        <span className="font-medium">{fmtKES(row.amount)}</span>
-                        {scaled && <span className="block text-[10px] text-muted-foreground">forecast {fmtKES(forecast)}</span>}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-
-        </CardContent>
-      </Card>
-
-      <PlanTemplates
-        currentRows={rows.map((r) => ({ category_id: r.category_id, label: r.label, percent: r.percent, amount: r.amount }))}
-        strategy={strategy}
-        earnings={earnings}
-        catLabel={catName}
-        onApply={(items, mode) => {
-          setStrategy(mode);
-          setRows(items.map((i) => ({ category_id: i.category_id, label: i.label, percent: i.percent, amount: i.amount })));
-        }}
-      />
-
-      <PlanTimeline categories={categories} refreshKey={refreshKey} onOpenMonth={setPeriod} />
-
-      <Card>
-
-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><CalendarRange className="h-4 w-4" /> Your plans</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {plans.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No saved plans yet — save this month's plan to start your history.</p>
-          ) : plans.map((p) => (
-            <div key={p.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 ${p.period === period ? "border-primary" : ""}`}>
-              <div>
-                <div className="text-sm font-medium">{monthLabel(p.period)}</div>
-                <div className="text-xs text-muted-foreground">Earnings {fmtKES(Number(p.total_income))} · split by {p.strategy === "percent" ? "percentages" : "fixed amounts"}</div>
-              </div>
-              <div className="flex gap-1">
-                <Button size="sm" variant="outline" onClick={() => setPeriod(p.period)}>Open</Button>
-                <Button size="sm" variant="ghost" onClick={() => removePlan(p.id, monthLabel(p.period))}><Trash2 className="h-4 w-4" /></Button>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      {/* Sticky save bar */}
+      <div className="fixed bottom-16 md:bottom-4 left-0 right-0 px-4 z-30 pointer-events-none">
+        <div className="max-w-3xl mx-auto pointer-events-auto rounded-full border bg-card/95 backdrop-blur shadow-lg px-4 py-2 flex items-center justify-between gap-3">
+          <div className="text-xs min-w-0 truncate">
+            <span className="font-semibold">{monthShort(period)}</span>{" · "}
+            <span className={unallocated < 0 ? "text-danger" : "text-muted-foreground"}>
+              {unallocated < 0 ? `over by ${fmtKES(Math.abs(unallocated))}` : `${fmtKES(unallocated)} free`}
+            </span>
+          </div>
+          <Button size="sm" onClick={save} disabled={saving} className="rounded-full">
+            <Save className="h-4 w-4 mr-1" /> {saving ? "Saving…" : dirty ? "Save changes" : "Save plan"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
 
-function Stat({ label, value, icon: Icon, tone = "default" }: any) {
-  const toneClass = tone === "danger" ? "text-danger" : tone === "success" ? "text-success" : "";
+function EnvelopeRow({
+  row, strategy, earnings, planned, spent, icon, name, kind, forecast, expenseCats, onChange, onRemove,
+}: any) {
+  const [editing, setEditing] = useState(false);
+  const remaining = planned - spent;
+  const pct = planned > 0 ? Math.min(100, (spent / planned) * 100) : spent > 0 ? 100 : 0;
+
   return (
-    <Card><CardContent className="p-4">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-        {Icon && <Icon className="h-3.5 w-3.5" />} {label}
+    <div className="rounded-xl border p-3 space-y-2 group">
+      <div className="flex items-center gap-2">
+        <span className="text-lg leading-none">{icon}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-sm font-medium truncate">{row.label || name}</span>
+            {kind && <Badge variant="secondary" className="text-[10px] capitalize shrink-0">{kind}</Badge>}
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            Spent {fmtKES(spent)} ·{" "}
+            <span className={remaining < 0 ? "text-danger font-semibold" : "text-success font-semibold"}>
+              {remaining < 0 ? `over by ${fmtKES(Math.abs(remaining))}` : `${fmtKES(remaining)} left`}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <Input type="number" inputMode="decimal"
+            value={strategy === "percent" ? row.percent || "" : row.amount || ""}
+            onChange={(e) => onChange(strategy === "percent"
+              ? { percent: Number(e.target.value) || 0 }
+              : { amount: Number(e.target.value) || 0 })}
+            className="h-9 w-24 text-right font-semibold"
+            placeholder={strategy === "percent" ? "%" : "0"} />
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing((v) => !v)} aria-label="Edit envelope">
+            {editing ? <Check className="h-4 w-4" /> : <span className="text-xs">⋯</span>}
+          </Button>
+        </div>
       </div>
-      <div className={`text-xl font-bold mt-1 ${toneClass}`}>{value}</div>
-    </CardContent></Card>
+
+      <Progress value={pct} className={remaining < 0 ? "[&>div]:bg-danger" : pct > 80 ? "[&>div]:bg-warning" : ""} />
+
+      <div className="flex flex-wrap items-center gap-2">
+        {strategy === "percent" && earnings > 0 && (
+          <span className="text-[10px] text-muted-foreground">= {fmtKES(planned)}</span>
+        )}
+        {forecast > 0 && Math.round(forecast) !== Math.round(planned) && (
+          <button type="button"
+            onClick={() => onChange(strategy === "percent"
+              ? { percent: earnings ? Math.round((forecast / earnings) * 1000) / 10 : 0 }
+              : { amount: Math.round(forecast) })}
+            className="text-[10px] text-primary hover:underline">
+            Forecast {fmtKES(forecast)} — use it
+          </button>
+        )}
+      </div>
+
+      {editing && (
+        <div className="grid gap-2 sm:grid-cols-2 pt-1 border-t">
+          <div className="pt-2">
+            <Label className="text-[11px]">Category</Label>
+            <Select value={row.category_id || "none"} onValueChange={(value) => onChange({ category_id: value === "none" ? null : value })}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— No category —</SelectItem>
+                {expenseCats.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="pt-2">
+            <Label className="text-[11px]">Nickname</Label>
+            <Input value={row.label} onChange={(e) => onChange({ label: e.target.value })}
+              placeholder="e.g. Household run" className="h-9" />
+          </div>
+          <div className="sm:col-span-2 flex justify-end">
+            <Button size="sm" variant="ghost" className="text-danger" onClick={onRemove}>
+              <X className="h-4 w-4 mr-1" /> Remove envelope
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
