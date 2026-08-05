@@ -259,7 +259,9 @@ export default function Planner() {
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Financial planner</h1>
-          <p className="text-muted-foreground text-sm">Plan any month ahead, split earnings into envelopes, and copy a plan forward when it works.</p>
+          <p className="text-muted-foreground text-sm">
+            Plan any month, split earnings into envelopes, and let your spending forecast do the first draft.
+          </p>
         </div>
         <div className="flex gap-2 items-end flex-wrap">
           <div>
@@ -272,25 +274,46 @@ export default function Planner() {
         </div>
       </div>
 
+      {/* Step 1 — earnings */}
       <Card>
-        <CardContent className="p-4 grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-end">
-          <div>
-            <Label>Expected earnings for {monthLabel(period)}</Label>
-            <Input type="number" inputMode="decimal" value={income} onChange={(e) => setIncome(e.target.value)} placeholder="e.g. 60000" className="text-lg font-semibold" />
-          </div>
-          <div>
-            <Label className="text-xs">Split by</Label>
-            <div className="flex gap-1 rounded-lg border p-1">
-              {(["amount", "percent"] as const).map((mode) => (
-                <Button key={mode} size="sm" variant={strategy === mode ? "default" : "ghost"} className="capitalize" onClick={() => setStrategy(mode)}>
-                  {mode === "amount" ? "Fixed amounts" : "Percentages"}
-                </Button>
-              ))}
+        <CardContent className="p-4 space-y-4">
+          <div className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-end">
+            <div>
+              <Label>1. Expected earnings for {monthLabel(period)}</Label>
+              <Input type="number" inputMode="decimal" value={income} onChange={(e) => setIncome(e.target.value)} placeholder="e.g. 60000" className="text-lg font-semibold" />
+              {forecastIncomeAvg > 0 && !earnings && (
+                <button type="button" onClick={() => setIncome(String(Math.round(forecastIncomeAvg)))}
+                  className="text-xs text-primary hover:underline mt-1">
+                  Use your 3-month average income ({fmtKES(forecastIncomeAvg)})
+                </button>
+              )}
             </div>
+            <div>
+              <Label className="text-xs">Split by</Label>
+              <div className="flex gap-1 rounded-lg border p-1">
+                {(["amount", "percent"] as const).map((mode) => (
+                  <Button key={mode} size="sm" variant={strategy === mode ? "default" : "ghost"} className="capitalize" onClick={() => setStrategy(mode)}>
+                    {mode === "amount" ? "Fixed amounts" : "Percentages"}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <Button onClick={applyRule}><Wand2 className="h-4 w-4 mr-1" /> Draft from my forecast</Button>
           </div>
-          <Button variant="outline" onClick={applyRule}><Wand2 className="h-4 w-4 mr-1" /> Suggest a split</Button>
+
+          {forecastSpend > 0 && (
+            <div className="rounded-lg bg-muted/50 border p-3 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+              <span className="font-medium text-foreground">Your forecast (same as Insights &amp; Reports):</span>
+              <span>Predicted spend {fmtKES(forecastSpend)}</span>
+              <span>Avg income {fmtKES(forecastIncomeAvg)}</span>
+              {earnings > 0 && forecastSpend > earnings && (
+                <span className="text-danger">Forecast exceeds your earnings — envelopes get scaled down evenly.</span>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
+
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Earnings" value={fmtKES(earnings)} icon={Wallet} />
