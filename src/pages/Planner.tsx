@@ -350,7 +350,7 @@ export default function Planner() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Envelopes</CardTitle>
+          <CardTitle className="text-base">2. Envelopes</CardTitle>
           <Button size="sm" variant="outline" onClick={addRow}><Plus className="h-4 w-4 mr-1" /> Add envelope</Button>
         </CardHeader>
         <CardContent className="space-y-3">
