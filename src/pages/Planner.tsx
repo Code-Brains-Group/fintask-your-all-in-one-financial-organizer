@@ -240,7 +240,7 @@ export default function Planner() {
   const draftSuggestionForNext = async () => {
     if (!user || !earnings) { toast.error("Save this month's earnings first"); return; }
     const preset = buildSuggestion(earnings);
-    if (!preset.length) { toast.error("Tag a few categories as need/want first in Settings"); return; }
+    if (!preset.length) { toast.error("Not enough spending history yet to forecast next month"); return; }
     const { data: plan, error } = await supabase.from("income_plans")
       .upsert({ user_id: user.id, period: nextPeriod, total_income: earnings, strategy: "amount" }, { onConflict: "user_id,period" })
       .select("id").single();
