@@ -8,7 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Shield, ShieldOff, Crown, Trash2, Plus } from "lucide-react";
+import { Download, Upload, Shield, ShieldOff, Crown, Trash2, Plus } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { fmtKES } from "@/lib/finance";
 import { Navigate } from "react-router-dom";
@@ -23,6 +24,9 @@ export default function Admin() {
   const [providers, setProviders] = useState<any[]>([]);
   const [tiers, setTiers] = useState<any[]>([]);
   const [downloading, setDownloading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [restoreResult, setRestoreResult] = useState<any[] | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -78,6 +82,35 @@ export default function Admin() {
       setDownloading(false);
     }
   };
+
+  const uploadBackup = async (file: File) => {
+    setUploading(true);
+    setRestoreResult(null);
+    try {
+      const sql = await file.text();
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`https://yhwmbyjwtnxjnehsprwq.supabase.co/functions/v1/admin-restore`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ sql }),
+      });
+      const out = await res.json();
+      if (!res.ok) throw new Error(out?.error || "Restore failed");
+      setRestoreResult(out.summary || []);
+      const total = (out.summary || []).reduce((s: number, r: any) => s + r.inserted, 0);
+      const failed = (out.summary || []).filter((r: any) => r.error);
+      toast.success(`Restored ${total} rows across ${(out.summary || []).length} tables`);
+      if (failed.length) toast.error(`${failed.length} table(s) had errors — see details below`);
+      loadAll();
+    } catch (e: any) {
+      toast.error(e.message || "Upload failed");
+    } finally {
+      setUploading(false);
+      setPendingFile(null);
+    }
+  };
+
+
 
 
   return (
@@ -135,8 +168,55 @@ export default function Admin() {
                   <Download className="h-4 w-4 mr-2"/> {downloading ? "Preparing…" : "Download data backup"}
                 </Button>
               </div>
+              <div className="pt-3 border-t">
+                <h3 className="text-sm font-medium mb-1">Restore</h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Upload a previously downloaded <strong>data backup</strong> (.sql). Rows are matched by id and overwritten — existing rows with the same id will be replaced.
+                </p>
+                <input
+                  id="backup-upload"
+                  type="file"
+                  accept=".sql,text/plain"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFile(f); e.currentTarget.value = ""; }}
+                />
+                <Button variant="outline" disabled={uploading} onClick={() => document.getElementById("backup-upload")?.click()}>
+                  <Upload className="h-4 w-4 mr-2"/> {uploading ? "Restoring…" : "Upload backup"}
+                </Button>
+              </div>
+
+              {restoreResult && (
+                <div className="pt-3 border-t space-y-1">
+                  <h3 className="text-sm font-medium">Last restore</h3>
+                  {restoreResult.map((r: any) => (
+                    <div key={r.table} className="flex items-center justify-between text-xs">
+                      <span className="font-mono">{r.table}</span>
+                      <span className={r.error ? "text-destructive" : "text-muted-foreground"}>
+                        {r.error ? r.error : `${r.inserted}/${r.rows} rows`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          <AlertDialog open={!!pendingFile} onOpenChange={(o) => { if (!o) setPendingFile(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Restore from backup?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {pendingFile?.name} will be applied to the live database. Rows sharing an id with existing records will be overwritten. This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => pendingFile && uploadBackup(pendingFile)}>Restore</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+
 
         </TabsContent>
       </Tabs>
