@@ -167,8 +167,55 @@ export default function Admin() {
                   <Download className="h-4 w-4 mr-2"/> {downloading ? "Preparing…" : "Download data backup"}
                 </Button>
               </div>
+              <div className="pt-3 border-t">
+                <h3 className="text-sm font-medium mb-1">Restore</h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Upload a previously downloaded <strong>data backup</strong> (.sql). Rows are matched by id and overwritten — existing rows with the same id will be replaced.
+                </p>
+                <input
+                  id="backup-upload"
+                  type="file"
+                  accept=".sql,text/plain"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFile(f); e.currentTarget.value = ""; }}
+                />
+                <Button variant="outline" disabled={uploading} onClick={() => document.getElementById("backup-upload")?.click()}>
+                  <Upload className="h-4 w-4 mr-2"/> {uploading ? "Restoring…" : "Upload backup"}
+                </Button>
+              </div>
+
+              {restoreResult && (
+                <div className="pt-3 border-t space-y-1">
+                  <h3 className="text-sm font-medium">Last restore</h3>
+                  {restoreResult.map((r: any) => (
+                    <div key={r.table} className="flex items-center justify-between text-xs">
+                      <span className="font-mono">{r.table}</span>
+                      <span className={r.error ? "text-destructive" : "text-muted-foreground"}>
+                        {r.error ? r.error : `${r.inserted}/${r.rows} rows`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          <AlertDialog open={!!pendingFile} onOpenChange={(o) => { if (!o) setPendingFile(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Restore from backup?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {pendingFile?.name} will be applied to the live database. Rows sharing an id with existing records will be overwritten. This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => pendingFile && uploadBackup(pendingFile)}>Restore</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+
 
         </TabsContent>
       </Tabs>
