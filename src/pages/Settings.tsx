@@ -23,6 +23,9 @@ export default function Settings() {
   const [tiers, setTiers] = useState<any[]>([]);
   const [providers, setProviders] = useState<any[]>([]);
   const [tour, setTour] = useState(false);
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [resetting, setResetting] = useState(false);
+
 
   const load = async () => {
     if (!user) return;
