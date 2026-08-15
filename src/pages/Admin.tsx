@@ -23,6 +23,9 @@ export default function Admin() {
   const [providers, setProviders] = useState<any[]>([]);
   const [tiers, setTiers] = useState<any[]>([]);
   const [downloading, setDownloading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [restoreResult, setRestoreResult] = useState<any[] | null>(null);
 
   useEffect(() => {
     if (!user) return;
