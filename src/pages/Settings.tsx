@@ -23,6 +23,9 @@ export default function Settings() {
   const [tiers, setTiers] = useState<any[]>([]);
   const [providers, setProviders] = useState<any[]>([]);
   const [tour, setTour] = useState(false);
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [resetting, setResetting] = useState(false);
+
 
   const load = async () => {
     if (!user) return;
@@ -77,7 +80,20 @@ export default function Settings() {
     setTour(true);
   };
 
+  const resetMyData = async () => {
+    setResetting(true);
+    const { error } = await (supabase as any).rpc("reset_my_data");
+    setResetting(false);
+    if (error) { toast.error(error.message); return; }
+    setResetConfirm("");
+    toast.success("All your data has been deleted. Starting fresh.");
+    await refreshFocus();
+    await load();
+    navigate("/onboarding");
+  };
+
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
+
 
   return (
     <div className="space-y-6">
@@ -231,14 +247,33 @@ export default function Settings() {
           <ReadOnlyCosts providers={providers} tiers={tiers} />
         </TabsContent>
 
-        <TabsContent value="account" className="mt-4">
+        <TabsContent value="account" className="mt-4 space-y-4">
           <Card><CardHeader><CardTitle className="text-base">Account</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <Button variant="outline" onClick={replayTour}><PlayCircle className="h-4 w-4 mr-1" /> Replay onboarding tour</Button>
               <Button variant="outline" onClick={handleSignOut}><LogOut className="h-4 w-4 mr-1" /> Sign out</Button>
             </CardContent>
           </Card>
+
+          <Card className="border-destructive/40">
+            <CardHeader><CardTitle className="text-base text-destructive">Danger zone</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Permanently delete <strong>all of your own data</strong> — transactions, wallets, categories, budgets,
+                savings, tasks, applications, learning paths, plans and reports — and start fresh. Your account stays
+                active. Other users are not affected. This cannot be undone.
+              </p>
+              <div className="max-w-xs space-y-2">
+                <Label>Type <code>DELETE</code> to confirm</Label>
+                <Input value={resetConfirm} onChange={(e) => setResetConfirm(e.target.value)} placeholder="DELETE" />
+              </div>
+              <Button variant="destructive" disabled={resetConfirm !== "DELETE" || resetting} onClick={resetMyData}>
+                <Trash2 className="h-4 w-4 mr-1" /> {resetting ? "Deleting…" : "Delete my data & start fresh"}
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
+
       </Tabs>
     </div>
   );
