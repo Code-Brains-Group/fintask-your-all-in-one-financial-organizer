@@ -77,7 +77,20 @@ export default function Settings() {
     setTour(true);
   };
 
+  const resetMyData = async () => {
+    setResetting(true);
+    const { error } = await (supabase as any).rpc("reset_my_data");
+    setResetting(false);
+    if (error) { toast.error(error.message); return; }
+    setResetConfirm("");
+    toast.success("All your data has been deleted. Starting fresh.");
+    await refreshFocus();
+    await load();
+    navigate("/onboarding");
+  };
+
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
+
 
   return (
     <div className="space-y-6">
