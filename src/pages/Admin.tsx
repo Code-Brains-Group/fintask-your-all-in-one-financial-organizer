@@ -79,6 +79,35 @@ export default function Admin() {
     }
   };
 
+  const uploadBackup = async (file: File) => {
+    setUploading(true);
+    setRestoreResult(null);
+    try {
+      const sql = await file.text();
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`https://yhwmbyjwtnxjnehsprwq.supabase.co/functions/v1/admin-restore`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ sql }),
+      });
+      const out = await res.json();
+      if (!res.ok) throw new Error(out?.error || "Restore failed");
+      setRestoreResult(out.summary || []);
+      const total = (out.summary || []).reduce((s: number, r: any) => s + r.inserted, 0);
+      const failed = (out.summary || []).filter((r: any) => r.error);
+      toast.success(`Restored ${total} rows across ${(out.summary || []).length} tables`);
+      if (failed.length) toast.error(`${failed.length} table(s) had errors — see details below`);
+      loadAll();
+    } catch (e: any) {
+      toast.error(e.message || "Upload failed");
+    } finally {
+      setUploading(false);
+      setPendingFile(null);
+    }
+  };
+
+
+
 
   return (
     <div className="space-y-6">
