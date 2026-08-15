@@ -1406,6 +1406,7 @@ export type Database = {
         Args: { _group: string; _user: string }
         Returns: boolean
       }
+      reset_my_data: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
