@@ -5,7 +5,7 @@ import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
+import PasswordInput from "@/components/PasswordInput";
 import { toast } from "sonner";
 import { Wallet } from "lucide-react";
 
@@ -122,7 +122,7 @@ export default function Auth() {
             {(mode === "login" || mode === "signup") && (
               <div>
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+                <PasswordInput id="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
             )}
             <Button type="submit" className="w-full" disabled={loading}>

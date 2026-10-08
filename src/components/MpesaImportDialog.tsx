@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import PasswordInput from "@/components/PasswordInput";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -236,7 +237,9 @@ export function MpesaImportDialog({ wallets, categories, existingTransactions, o
             </div>
             <div>
               <Label htmlFor="mpesa-password" className="flex items-center gap-2"><LockKeyhole className="h-4 w-4" /> PDF password (if required)</Label>
-              <Input id="mpesa-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter statement password" className="mt-1" />
+              <div className="mt-1">
+                <PasswordInput id="mpesa-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter statement password" />
+              </div>
             </div>
             <Button className="w-full" onClick={parse} disabled={parsing || !file}>
               {parsing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Reading statement…</> : "Read transactions"}

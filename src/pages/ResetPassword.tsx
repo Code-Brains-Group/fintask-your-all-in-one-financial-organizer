@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import PasswordInput from "@/components/PasswordInput";
 import { toast } from "sonner";
 
 export default function ResetPassword() {
@@ -31,7 +32,7 @@ export default function ResetPassword() {
         <h1 className="text-xl font-semibold">Set a new password</h1>
         <div>
           <Label htmlFor="pw">New password</Label>
-          <Input id="pw" type="password" minLength={6} required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordInput id="pw" minLength={6} required value={password} onChange={(e) => setPassword(e.target.value)} />
         </div>
         <Button type="submit" className="w-full">Update password</Button>
       </form>
